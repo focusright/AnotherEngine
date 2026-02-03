@@ -5,6 +5,8 @@
 #include <wrl/client.h>
 
 #include "d3dx12.h"  // For CD3DX12 helper classes
+#include "EditableMesh.h"
+#include "RenderMesh.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -42,19 +44,16 @@ struct Vertex {
     XMFLOAT4 color;
 };
 
-// --- Minimal authoring mesh (truth) ---
-using VertexID = uint32_t;
+struct InputState {
+    int mouseX = 0;
+    int mouseY = 0;
 
-struct EditableMesh {
-    XMFLOAT3 positions[3]; // keep fixed-size for now (triangle only)
-    void SetVertex(VertexID v, XMFLOAT3 p) { positions[v] = p; }
-    XMFLOAT3 GetVertex(VertexID v) const { return positions[v]; }
+    bool lmbDown = false;      // current state
+    bool lmbPressed = false;   // edge: went down this frame
+    bool lmbReleased = false;  // edge: went up this frame
 };
 
-// --- GPU cache state ---
-struct RenderMesh {
-    bool dirty = true;
-};
+InputState g_input;
 
 
 // Mouse interaction variables
@@ -81,6 +80,10 @@ void UpdateVertexBuffer();
 int HitTestVertex(int mouseX, int mouseY);
 void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY);
 
+void BeginFrameInput();   // clears edge flags
+void Update(float dt);    // runs tool logic
+
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     InitializeWindow(hInstance);
     InitializeDirect3D();
@@ -94,6 +97,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         } else {
+            BeginFrameInput();   // clear pressed/released edges for this frame
+            Update(0.0f);        // dt not used yet; we’ll add time later
             PopulateCommandList();
             WaitForGpu();
             g_swapChain->Present(1, 0);
@@ -115,49 +120,31 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 return 0;
             }
             break;
-        case WM_LBUTTONDOWN:
-            {
-                int x = GET_X_LPARAM(lParam);
-                int y = GET_Y_LPARAM(lParam);
-                g_selectedVertex = HitTestVertex(x, y);
-                if (g_selectedVertex != -1) {
-                    g_isDragging = true;
-                    g_lastMousePos = {x, y};
-                    SetCapture(hwnd);
-                }
-            }
-            return 0;
-        case WM_LBUTTONUP:
-            {
-                g_isDragging = false;
-                g_selectedVertex = -1;
-                ReleaseCapture();
-            }
-            return 0;
-        case WM_MOUSEMOVE:
-            {
-                if (g_isDragging && g_selectedVertex != -1) {
-                    int x = GET_X_LPARAM(lParam);
-                    int y = GET_Y_LPARAM(lParam);
-                    
-                    // Convert screen coordinates to NDC
-                    float ndcX, ndcY;
-                    ScreenToNDC(x, y, ndcX, ndcY);
-                    
-                    // Update authoring mesh (truth)
-                    XMFLOAT3 p = g_editMesh.GetVertex((VertexID)g_selectedVertex);
-                    p.x = ndcX;
-                    p.y = ndcY;
-                    g_editMesh.SetVertex((VertexID)g_selectedVertex, p);
+        case WM_LBUTTONDOWN: {
+            g_input.lmbDown = true;
+            g_input.lmbPressed = true;
 
-                    // Mark GPU cache dirty and upload
-                    g_renderMesh.dirty = true;
-                    UpdateVertexBuffer();
+            g_input.mouseX = GET_X_LPARAM(lParam);
+            g_input.mouseY = GET_Y_LPARAM(lParam);
 
-                    g_lastMousePos = {x, y};
-                }
-            }
+            SetCapture(hwnd);
             return 0;
+        }
+        case WM_LBUTTONUP: {
+            g_input.lmbDown = false;
+            g_input.lmbReleased = true;
+
+            g_input.mouseX = GET_X_LPARAM(lParam);
+            g_input.mouseY = GET_Y_LPARAM(lParam);
+
+            ReleaseCapture();
+            return 0;
+        }
+        case WM_MOUSEMOVE: {
+            g_input.mouseX = GET_X_LPARAM(lParam);
+            g_input.mouseY = GET_Y_LPARAM(lParam);
+            return 0;
+        }
         case WM_SETCURSOR:
             SetCursor(LoadCursor(nullptr, IDC_ARROW));
             return TRUE;
@@ -478,12 +465,8 @@ void MoveToNextFrame() {
 }
 
 void UpdateVertexBuffer() {
-    if (!g_renderMesh.dirty) return;
-
-    // Rebuild staging vertices (keep existing colors, update positions from edit mesh)
+    // Rebuild staging vertices from EditableMesh (truth)
     for (uint32_t i = 0; i < 3; ++i) {
-        // If you want colors to remain constant, initialize once and only overwrite position:
-        // easiest: keep whatever is already in g_drawVertices[i].color
         g_drawVertices[i].position = g_editMesh.GetVertex(i);
     }
 
@@ -492,8 +475,6 @@ void UpdateVertexBuffer() {
     g_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
     memcpy(pVertexDataBegin, g_drawVertices, sizeof(g_drawVertices));
     g_vertexBuffer->Unmap(0, nullptr);
-
-    g_renderMesh.dirty = false;
 }
 
 int HitTestVertex(int mouseX, int mouseY) {
@@ -520,4 +501,44 @@ void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY) {
     
     ndcX = (2.0f * screenX / WINDOW_WIDTH) - 1.0f;
     ndcY = 1.0f - (2.0f * screenY / WINDOW_HEIGHT); // Flip Y axis
+}
+
+void BeginFrameInput() {
+    g_input.lmbPressed = false;
+    g_input.lmbReleased = false;
+}
+
+void Update(float /*dt*/) {
+    // 1) On press: select a vertex
+    if (g_input.lmbPressed) {
+        g_selectedVertex = HitTestVertex(g_input.mouseX, g_input.mouseY);
+        g_isDragging = (g_selectedVertex != -1);
+        g_lastMousePos = { g_input.mouseX, g_input.mouseY };
+    }
+
+    // 2) On release: stop dragging
+    if (g_input.lmbReleased) {
+        g_isDragging = false;
+        g_selectedVertex = -1;
+    }
+
+    // 3) While dragging: edit the mesh (truth), mark dirty
+    if (g_input.lmbDown && g_isDragging && g_selectedVertex != -1) {
+        float ndcX, ndcY;
+        ScreenToNDC(g_input.mouseX, g_input.mouseY, ndcX, ndcY);
+
+        // Authoring mesh is truth
+        XMFLOAT3 p = g_editMesh.GetVertex((VertexID)g_selectedVertex);
+        p.x = ndcX;
+        p.y = ndcY;
+        g_editMesh.SetVertex((VertexID)g_selectedVertex, p);
+
+        g_renderMesh.dirty = true;
+    }
+
+    // 4) Upload once per frame (not inside WindowProc)
+    if (g_renderMesh.dirty) {
+        UpdateVertexBuffer();
+        g_renderMesh.dirty = false;
+    }
 }

@@ -1,0 +1,38 @@
+AnotherEngine/
+├─ engine/
+│  ├─ core/
+│  │   ├─ App.h / App.cpp          // main loop, lifetime, tick order
+│  │   ├─ Platform.h               // Win32 now, seam later
+│  │   └─ Time.h                   // frame timing
+│  │
+│  ├─ gfx/
+│  │   ├─ GraphicsDevice.h         // D3D12 wrapper
+│  │   ├─ SwapChain.h
+│  │   └─ Shader.h
+│  │
+│  ├─ input/
+│  │   └─ InputState.h             // keyboard/mouse snapshot
+│  │
+│  ├─ math/
+│  │   └─ Math.h                   // vectors, matrices (thin)
+│  │
+│  └─ engine.h                     // umbrella include
+│
+├─ editor/
+│  ├─ EditorApp.cpp                // editor entry point
+│  ├─ EditorContext.h              // shared state
+│  └─ modes/
+│     └─ ModelingMode.cpp          // triangle editing lives here
+│
+├─ game/
+│  └─ GameApp.cpp                  // later: playable runtime
+│
+├─ third_party/
+│  └─ d3dx12.h / etc
+│
+├─ assets/
+│  └─ placeholder/                 // temporary meshes, shaders
+│
+├─ LICENSE
+├─ README.md
+└─ CMakeLists.txt

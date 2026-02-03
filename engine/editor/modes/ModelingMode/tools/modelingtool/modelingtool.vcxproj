@@ -82,6 +82,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="d3dx12.h" />
     <ClInclude Include="EditableMesh.h" />
     <ClInclude Include="RenderMesh.h" />
   </ItemGroup>

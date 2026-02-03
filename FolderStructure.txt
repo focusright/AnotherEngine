@@ -36,3 +36,20 @@ AnotherEngine/
 ├─ LICENSE
 ├─ README.md
 └─ CMakeLists.txt
+
+
+
+
+[Prototypes]
+
+prototypes/
+  modelingtool_proto/
+    app/          // throwaway host (WinMain, D3D12 init)
+    module/       // KEEP THIS (EditableMesh, tools, selection)
+    vendor/
+
+engine/
+  editor/
+    modes/
+      ModelingMode/
+        module/   // eventually, move prototypes/.../module here

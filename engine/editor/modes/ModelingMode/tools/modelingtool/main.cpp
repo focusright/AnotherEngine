@@ -93,17 +93,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Main message loop
     MSG msg = {};
     while (msg.message != WM_QUIT) {
-        if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+        BeginFrameInput(); // clear edge flags at start of frame
+
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
-        } else {
-            BeginFrameInput();   // clear pressed/released edges for this frame
-            Update(0.0f);        // dt not used yet; we’ll add time later
-            PopulateCommandList();
-            WaitForGpu();
-            g_swapChain->Present(1, 0);
-            MoveToNextFrame();
         }
+
+        Update(0.0f); // dt later
+
+        PopulateCommandList();
+        WaitForGpu();
+        g_swapChain->Present(1, 0);
+        MoveToNextFrame();
     }
 
     return static_cast<int>(msg.wParam);

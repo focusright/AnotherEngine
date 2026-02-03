@@ -42,11 +42,31 @@ struct Vertex {
     XMFLOAT4 color;
 };
 
+// --- Minimal authoring mesh (truth) ---
+using VertexID = uint32_t;
+
+struct EditableMesh {
+    XMFLOAT3 positions[3]; // keep fixed-size for now (triangle only)
+    void SetVertex(VertexID v, XMFLOAT3 p) { positions[v] = p; }
+    XMFLOAT3 GetVertex(VertexID v) const { return positions[v]; }
+};
+
+// --- GPU cache state ---
+struct RenderMesh {
+    bool dirty = true;
+};
+
+
 // Mouse interaction variables
 bool g_isDragging = false;
 int g_selectedVertex = -1;
 POINT g_lastMousePos = {0, 0};
-Vertex g_vertices[3];  // Store vertices for easy manipulation
+//Vertex g_vertices[3];  // Store vertices for easy manipulation
+
+EditableMesh g_editMesh;
+RenderMesh   g_renderMesh;
+Vertex       g_drawVertices[3]; // staging array used only for upload (positions+colors)
+
 
 // Forward declarations
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -124,13 +144,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                     float ndcX, ndcY;
                     ScreenToNDC(x, y, ndcX, ndcY);
                     
-                    // Update vertex position
-                    g_vertices[g_selectedVertex].position.x = ndcX;
-                    g_vertices[g_selectedVertex].position.y = ndcY;
-                    
-                    // Update vertex buffer
+                    // Update authoring mesh (truth)
+                    XMFLOAT3 p = g_editMesh.GetVertex((VertexID)g_selectedVertex);
+                    p.x = ndcX;
+                    p.y = ndcY;
+                    g_editMesh.SetVertex((VertexID)g_selectedVertex, p);
+
+                    // Mark GPU cache dirty and upload
+                    g_renderMesh.dirty = true;
                     UpdateVertexBuffer();
-                    
+
                     g_lastMousePos = {x, y};
                 }
             }
@@ -345,10 +368,19 @@ void CreateVertexBuffer() {
         { XMFLOAT3(scale, -scale, 0.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) }     // Bottom right (Blue)
     };
 
-    // Initialize global vertices array
-    memcpy(g_vertices, triangleVertices, sizeof(triangleVertices));
+    // Truth lives in EditableMesh (positions only)
+    for (uint32_t i = 0; i < 3; ++i) {
+        g_editMesh.SetVertex(i, triangleVertices[i].position);
+    }
 
-    const UINT vertexBufferSize = sizeof(triangleVertices);
+    // GPU staging uses colors + positions pulled from edit mesh
+    for (uint32_t i = 0; i < 3; ++i) {
+        g_drawVertices[i] = triangleVertices[i];
+        g_drawVertices[i].position = g_editMesh.GetVertex(i);
+    }
+
+    const UINT vertexBufferSize = sizeof(g_drawVertices);
+
     CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
     g_device->CreateCommittedResource(
@@ -360,11 +392,14 @@ void CreateVertexBuffer() {
         IID_PPV_ARGS(&g_vertexBuffer)
     );
 
-    UINT8* pVertexDataBegin;
+    // initial upload
+    UINT8* pVertexDataBegin = nullptr;
     D3D12_RANGE readRange = { 0, 0 };
     g_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
-    memcpy(pVertexDataBegin, triangleVertices, sizeof(triangleVertices));
+    memcpy(pVertexDataBegin, g_drawVertices, sizeof(g_drawVertices));
     g_vertexBuffer->Unmap(0, nullptr);
+
+    g_renderMesh.dirty = false;
 }
 
 void PopulateCommandList() {
@@ -443,11 +478,22 @@ void MoveToNextFrame() {
 }
 
 void UpdateVertexBuffer() {
-    UINT8* pVertexDataBegin;
+    if (!g_renderMesh.dirty) return;
+
+    // Rebuild staging vertices (keep existing colors, update positions from edit mesh)
+    for (uint32_t i = 0; i < 3; ++i) {
+        // If you want colors to remain constant, initialize once and only overwrite position:
+        // easiest: keep whatever is already in g_drawVertices[i].color
+        g_drawVertices[i].position = g_editMesh.GetVertex(i);
+    }
+
+    UINT8* pVertexDataBegin = nullptr;
     D3D12_RANGE readRange = { 0, 0 };
     g_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
-    memcpy(pVertexDataBegin, g_vertices, sizeof(g_vertices));
+    memcpy(pVertexDataBegin, g_drawVertices, sizeof(g_drawVertices));
     g_vertexBuffer->Unmap(0, nullptr);
+
+    g_renderMesh.dirty = false;
 }
 
 int HitTestVertex(int mouseX, int mouseY) {
@@ -457,13 +503,11 @@ int HitTestVertex(int mouseX, int mouseY) {
     const float hitRadius = 0.05f; // Hit radius in NDC space
     
     for (int i = 0; i < 3; i++) {
-        float dx = ndcX - g_vertices[i].position.x;
-        float dy = ndcY - g_vertices[i].position.y;
-        float distance = sqrt(dx * dx + dy * dy);
-        
-        if (distance < hitRadius) {
-            return i;
-        }
+        XMFLOAT3 p = g_editMesh.GetVertex((VertexID)i);
+        float dx = ndcX - p.x;
+        float dy = ndcY - p.y;
+        float distance = sqrtf(dx * dx + dy * dy);
+        if (distance < hitRadius) return i;
     }
     
     return -1; // No vertex hit

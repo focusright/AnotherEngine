@@ -73,3 +73,16 @@ D3D12_CPU_DESCRIPTOR_HANDLE GraphicsDevice::RTV(uint32_t frameIndex) const {
 ID3D12Resource* GraphicsDevice::BackBuffer(uint32_t frameIndex) const {
     return m_renderTargets[frameIndex].Get();
 }
+
+void GraphicsDevice::SetFrameIndexFromSwapChain() {
+    if (!m_swapChain) { return; }
+    m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE GraphicsDevice::CurrentRTV() const {
+    return RTV(m_frameIndex);
+}
+
+ID3D12Resource* GraphicsDevice::CurrentBackBuffer() const {
+    return BackBuffer(m_frameIndex);
+}

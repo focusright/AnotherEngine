@@ -29,7 +29,6 @@ ComPtr<ID3D12GraphicsCommandList> g_commandList;
 ComPtr<ID3D12RootSignature> g_rootSignature;
 ComPtr<ID3D12PipelineState> g_pipelineState;
 ComPtr<ID3D12Resource> g_vertexBuffer;
-UINT g_frameIndex;
 ComPtr<ID3D12Fence> g_fence;
 UINT64 g_fenceValue;
 HANDLE g_fenceEvent;
@@ -234,7 +233,7 @@ void InitializeDirect3D() {
         return;
     }
 
-    g_frameIndex = g_gfx.SwapChain()->GetCurrentBackBufferIndex();
+    g_gfx.SetFrameIndexFromSwapChain();
 
     if (!g_gfx.CreateRTVs(g_device.Get(), DXGI_FORMAT_R8G8B8A8_UNORM, 2)) {
         MessageBox(g_hwnd, L"CreateRTVs failed.", L"Error", MB_OK);
@@ -404,11 +403,11 @@ void PopulateCommandList() {
     g_commandList->RSSetViewports(1, &viewport);
     g_commandList->RSSetScissorRects(1, &scissorRect);
 
-    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(g_gfx.BackBuffer(g_frameIndex), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(g_gfx.CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
     g_commandList->ResourceBarrier(1, &barrier);
 
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_gfx.RTV(g_frameIndex);
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_gfx.CurrentRTV();
     g_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
     const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -423,7 +422,7 @@ void PopulateCommandList() {
     g_commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
     g_commandList->DrawInstanced(3, 1, 0, 0);
 
-    barrier = CD3DX12_RESOURCE_BARRIER::Transition(g_gfx.BackBuffer(g_frameIndex), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+    barrier = CD3DX12_RESOURCE_BARRIER::Transition(g_gfx.CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
     g_commandList->ResourceBarrier(1, &barrier);
     g_commandList->Close();
@@ -452,7 +451,7 @@ void MoveToNextFrame() {
         WaitForSingleObject(g_fenceEvent, INFINITE);
     }
 
-    g_frameIndex = g_gfx.SwapChain()->GetCurrentBackBufferIndex();
+    g_gfx.SetFrameIndexFromSwapChain();
 }
 
 void UpdateVertexBuffer() {

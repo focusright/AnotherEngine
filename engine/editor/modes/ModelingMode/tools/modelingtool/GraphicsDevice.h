@@ -19,6 +19,12 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE RTV(uint32_t frameIndex) const;
     ID3D12Resource* BackBuffer(uint32_t frameIndex) const;
 
+    void SetFrameIndexFromSwapChain();
+    uint32_t FrameIndex() const { return m_frameIndex; }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE CurrentRTV() const;
+    ID3D12Resource* CurrentBackBuffer() const;
+
     private:
     Microsoft::WRL::ComPtr<ID3D12Device> m_device;
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_queue;
@@ -27,4 +33,6 @@ public:
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
     Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTargets[2];
     uint32_t m_rtvDescriptorSize = 0;
+
+    uint32_t m_frameIndex = 0;
 };

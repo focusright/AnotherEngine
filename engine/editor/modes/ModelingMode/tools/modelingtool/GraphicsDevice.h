@@ -8,18 +8,23 @@
 
 class GraphicsDevice {
 public:
-    void SetDevice(const Microsoft::WRL::ComPtr<ID3D12Device>& device) { m_device = device; }
-    void SetSwapChain(const Microsoft::WRL::ComPtr<IDXGISwapChain3>& swapChain) { m_swapChain = swapChain; }
-
     ID3D12Device* Device() const { return m_device.Get(); }
     ID3D12CommandQueue* Queue() const { return m_queue.Get(); }
     IDXGISwapChain3* SwapChain() const { return m_swapChain.Get(); }
 
     bool CreateCommandQueue(ID3D12Device* device);
     bool CreateSwapChain(IDXGIFactory6* factory, HWND hwnd, uint32_t width, uint32_t height, DXGI_FORMAT format, uint32_t bufferCount);
+    bool CreateRTVs(ID3D12Device* device, DXGI_FORMAT rtvFormat, uint32_t bufferCount);
 
-private:
+    D3D12_CPU_DESCRIPTOR_HANDLE RTV(uint32_t frameIndex) const;
+    ID3D12Resource* BackBuffer(uint32_t frameIndex) const;
+
+    private:
     Microsoft::WRL::ComPtr<ID3D12Device> m_device;
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_queue;
     Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
+
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
+    Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTargets[2];
+    uint32_t m_rtvDescriptorSize = 0;
 };

@@ -3,8 +3,9 @@
 #include <dxgi1_6.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
+#include <cwchar>
 
-#include "d3dx12.h"  // For CD3DX12 helper classes
+#include "d3dx12.h"
 #include "EditableMesh.h"
 #include "RenderMesh.h"
 #include "GraphicsDevice.h"
@@ -28,9 +29,6 @@ ComPtr<ID3D12GraphicsCommandList> g_commandList;
 ComPtr<ID3D12RootSignature> g_rootSignature;
 ComPtr<ID3D12PipelineState> g_pipelineState;
 ComPtr<ID3D12Resource> g_vertexBuffer;
-ComPtr<ID3D12DescriptorHeap> g_rtvHeap;
-ComPtr<ID3D12Resource> g_renderTargets[2];
-UINT g_rtvDescriptorSize;
 UINT g_frameIndex;
 ComPtr<ID3D12Fence> g_fence;
 UINT64 g_fenceValue;
@@ -215,7 +213,6 @@ void InitializeDirect3D() {
         PostQuitMessage(0);
         return;
     }
-
     if (!g_gfx.Queue()) {
         MessageBox(g_hwnd, L"Queue is null after creation.", L"Error", MB_OK);
         PostQuitMessage(0);
@@ -239,18 +236,10 @@ void InitializeDirect3D() {
 
     g_frameIndex = g_gfx.SwapChain()->GetCurrentBackBufferIndex();
 
-    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-    rtvHeapDesc.NumDescriptors = 2;
-    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-    g_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&g_rtvHeap));
-    g_rtvDescriptorSize = g_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-    for (UINT i = 0; i < 2; i++) {
-        g_gfx.SwapChain()->GetBuffer(i, IID_PPV_ARGS(&g_renderTargets[i]));
-        g_device->CreateRenderTargetView(g_renderTargets[i].Get(), nullptr, rtvHandle);
-        rtvHandle.ptr += g_rtvDescriptorSize;
+    if (!g_gfx.CreateRTVs(g_device.Get(), DXGI_FORMAT_R8G8B8A8_UNORM, 2)) {
+        MessageBox(g_hwnd, L"CreateRTVs failed.", L"Error", MB_OK);
+        PostQuitMessage(0);
+        return;
     }
 
     g_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_commandAllocator));
@@ -415,11 +404,11 @@ void PopulateCommandList() {
     g_commandList->RSSetViewports(1, &viewport);
     g_commandList->RSSetScissorRects(1, &scissorRect);
 
-    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(g_renderTargets[g_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(g_gfx.BackBuffer(g_frameIndex), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
     g_commandList->ResourceBarrier(1, &barrier);
 
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-    rtvHandle.ptr += g_frameIndex * g_rtvDescriptorSize;
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_gfx.RTV(g_frameIndex);
     g_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
     const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -434,9 +423,9 @@ void PopulateCommandList() {
     g_commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
     g_commandList->DrawInstanced(3, 1, 0, 0);
 
-    barrier = CD3DX12_RESOURCE_BARRIER::Transition(g_renderTargets[g_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-    g_commandList->ResourceBarrier(1, &barrier);
+    barrier = CD3DX12_RESOURCE_BARRIER::Transition(g_gfx.BackBuffer(g_frameIndex), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
+    g_commandList->ResourceBarrier(1, &barrier);
     g_commandList->Close();
 
     ID3D12CommandList* ppCommandLists[] = { g_commandList.Get() };
@@ -455,30 +444,39 @@ void WaitForGpu() {
 }
 
 void MoveToNextFrame() {
-    const UINT64 fenceValue = g_fenceValue;
+    const UINT64 fenceValue = ++g_fenceValue;
     g_gfx.Queue()->Signal(g_fence.Get(), fenceValue);
-    g_fenceValue++;
-
-    g_frameIndex = g_gfx.SwapChain()->GetCurrentBackBufferIndex();
 
     if (g_fence->GetCompletedValue() < fenceValue) {
         g_fence->SetEventOnCompletion(fenceValue, g_fenceEvent);
         WaitForSingleObject(g_fenceEvent, INFINITE);
     }
+
+    g_frameIndex = g_gfx.SwapChain()->GetCurrentBackBufferIndex();
 }
 
 void UpdateVertexBuffer() {
-    // Rebuild staging vertices from EditableMesh (truth)
+    if (!g_vertexBuffer) { return; }
+
     for (uint32_t i = 0; i < 3; ++i) {
         g_drawVertices[i].position = g_editMesh.GetVertex(i);
     }
 
     UINT8* pVertexDataBegin = nullptr;
     D3D12_RANGE readRange = { 0, 0 };
-    g_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
+
+    HRESULT hr = g_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
+    if (FAILED(hr) || !pVertexDataBegin) {
+        wchar_t buf[256];
+        swprintf_s(buf, L"VertexBuffer Map failed. hr=0x%08X", (unsigned)hr);
+        MessageBox(g_hwnd, buf, L"Error", MB_OK);
+        return;
+    }
+
     memcpy(pVertexDataBegin, g_drawVertices, sizeof(g_drawVertices));
     g_vertexBuffer->Unmap(0, nullptr);
 }
+
 
 int HitTestVertex(int mouseX, int mouseY) {
     float ndcX, ndcY;

@@ -7,6 +7,7 @@
 #include "d3dx12.h"  // For CD3DX12 helper classes
 #include "EditableMesh.h"
 #include "RenderMesh.h"
+#include "GraphicsDevice.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -22,7 +23,6 @@ const int WINDOW_HEIGHT = 600;
 // Global variables
 HWND g_hwnd = nullptr;
 ComPtr<ID3D12Device> g_device;
-ComPtr<ID3D12CommandQueue> g_commandQueue;
 ComPtr<ID3D12CommandAllocator> g_commandAllocator;
 ComPtr<ID3D12GraphicsCommandList> g_commandList;
 ComPtr<ID3D12RootSignature> g_rootSignature;
@@ -36,6 +36,8 @@ ComPtr<ID3D12Fence> g_fence;
 UINT64 g_fenceValue;
 HANDLE g_fenceEvent;
 ComPtr<IDXGISwapChain3> g_swapChain;
+
+GraphicsDevice g_gfx;
 
 // Vertex structure
 struct Vertex {
@@ -209,10 +211,17 @@ void InitializeDirect3D() {
         if (SUCCEEDED(D3D12CreateDevice(hardwareAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&g_device)))) break;
     }
 
-    D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-    queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-    queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-    g_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&g_commandQueue));
+    if (!g_gfx.CreateCommandQueue(g_device.Get())) {
+        MessageBox(g_hwnd, L"CreateCommandQueue failed.", L"Error", MB_OK);
+        PostQuitMessage(0);
+        return;
+    }
+
+    if (!g_gfx.Queue()) {
+        MessageBox(g_hwnd, L"Queue is null after creation.", L"Error", MB_OK);
+        PostQuitMessage(0);
+        return;
+    }
 
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
     swapChainDesc.BufferCount = 2;
@@ -225,7 +234,7 @@ void InitializeDirect3D() {
 
     ComPtr<IDXGISwapChain1> swapChain1;
     factory->CreateSwapChainForHwnd(
-        g_commandQueue.Get(),
+        g_gfx.Queue(),
         g_hwnd,
         &swapChainDesc,
         nullptr,
@@ -257,6 +266,8 @@ void InitializeDirect3D() {
     g_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_fence));
     g_fenceValue = 1;
     g_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+
+    g_gfx.SetSwapChain(g_swapChain);
 }
 
 void CreatePipelineState() {
@@ -437,12 +448,12 @@ void PopulateCommandList() {
     g_commandList->Close();
 
     ID3D12CommandList* ppCommandLists[] = { g_commandList.Get() };
-    g_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+    g_gfx.Queue()->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 }
 
 void WaitForGpu() {
     const UINT64 fence = g_fenceValue;
-    g_commandQueue->Signal(g_fence.Get(), fence);
+    g_gfx.Queue()->Signal(g_fence.Get(), fence);
     g_fenceValue++;
 
     if (g_fence->GetCompletedValue() < fence) {
@@ -453,7 +464,7 @@ void WaitForGpu() {
 
 void MoveToNextFrame() {
     const UINT64 fenceValue = g_fenceValue;
-    g_commandQueue->Signal(g_fence.Get(), fenceValue);
+    g_gfx.Queue()->Signal(g_fence.Get(), fenceValue);
     g_fenceValue++;
 
     g_frameIndex = g_swapChain->GetCurrentBackBufferIndex();

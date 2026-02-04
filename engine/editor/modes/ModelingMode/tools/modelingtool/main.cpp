@@ -3,18 +3,14 @@
 #include <dxgi1_6.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
-#include <exception>
-#include <vector>
 
 #include "d3dx12.h"  // For CD3DX12 helper classes
 #include "EditableMesh.h"
 #include "RenderMesh.h"
-#include "GraphicsDevice.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
-#pragma comment(lib, "dxguid.lib")
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -25,11 +21,21 @@ const int WINDOW_HEIGHT = 600;
 
 // Global variables
 HWND g_hwnd = nullptr;
+ComPtr<ID3D12Device> g_device;
+ComPtr<ID3D12CommandQueue> g_commandQueue;
+ComPtr<ID3D12CommandAllocator> g_commandAllocator;
+ComPtr<ID3D12GraphicsCommandList> g_commandList;
 ComPtr<ID3D12RootSignature> g_rootSignature;
 ComPtr<ID3D12PipelineState> g_pipelineState;
 ComPtr<ID3D12Resource> g_vertexBuffer;
-
-GraphicsDevice g_gfx;
+ComPtr<ID3D12DescriptorHeap> g_rtvHeap;
+ComPtr<ID3D12Resource> g_renderTargets[2];
+UINT g_rtvDescriptorSize;
+UINT g_frameIndex;
+ComPtr<ID3D12Fence> g_fence;
+UINT64 g_fenceValue;
+HANDLE g_fenceEvent;
+ComPtr<IDXGISwapChain3> g_swapChain;
 
 // Vertex structure
 struct Vertex {
@@ -67,6 +73,8 @@ void InitializeDirect3D();
 void CreatePipelineState();
 void CreateVertexBuffer();
 void PopulateCommandList();
+void WaitForGpu();
+void MoveToNextFrame();
 void UpdateVertexBuffer();
 int HitTestVertex(int mouseX, int mouseY);
 void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY);
@@ -76,52 +84,30 @@ void Update(float dt);    // runs tool logic
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    try {
-        InitializeWindow(hInstance);
-        InitializeDirect3D();
-        CreatePipelineState();
-        CreateVertexBuffer();
+    InitializeWindow(hInstance);
+    InitializeDirect3D();
+    CreatePipelineState();
+    CreateVertexBuffer();
 
-        // Main message loop
-        MSG msg = {};
+    // Main message loop
+    MSG msg = {};
+    while (msg.message != WM_QUIT) {
+        BeginFrameInput(); // clear edge flags at start of frame
 
-        while (msg.message != WM_QUIT) {
-            BeginFrameInput(); // clear edge flags at start of frame
-
-            while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
-            }
-
-            Update(0.0f); // dt later
-
-            // Skip render when minimized, not visible, or zero-sized to avoid DXGI_ERROR_INVALID_CALL at Present
-            RECT clientRect = {};
-            if (IsWindowVisible(g_hwnd) && !IsIconic(g_hwnd) &&
-                GetClientRect(g_hwnd, &clientRect) &&
-                (clientRect.right > clientRect.left) && (clientRect.bottom > clientRect.top)) {
-                PopulateCommandList();
-            } else {
-                Sleep(10);
-            }
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
         }
 
-        g_gfx.Shutdown();
-        return static_cast<int>(msg.wParam);
-    } catch (const std::exception& e) {
-        OutputDebugStringA("ModelingTool: ");
-        OutputDebugStringA(e.what());
-        int len = MultiByteToWideChar(CP_ACP, 0, e.what(), -1, nullptr, 0);
-        if (len > 0) {
-            std::vector<wchar_t> buf(static_cast<size_t>(len));
-            MultiByteToWideChar(CP_ACP, 0, e.what(), -1, buf.data(), len);
-            MessageBoxW(nullptr, buf.data(), L"ModelingTool Error", MB_OK | MB_ICONERROR);
-        } else {
-            MessageBoxW(nullptr, L"A fatal error occurred. See Output/Debug for details.", L"ModelingTool Error", MB_OK | MB_ICONERROR);
-        }
-        g_gfx.Shutdown();
-        return 1;
+        Update(0.0f); // dt later
+
+        PopulateCommandList();
+        WaitForGpu();
+        g_swapChain->Present(1, 0);
+        MoveToNextFrame();
     }
+
+    return static_cast<int>(msg.wParam);
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -163,16 +149,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         case WM_SETCURSOR:
             SetCursor(LoadCursor(nullptr, IDC_ARROW));
             return TRUE;
-        case WM_SIZE: {
-            RECT rc = {};
-            if (GetClientRect(hwnd, &rc)) {
-                UINT w = (UINT)(rc.right - rc.left);
-                UINT h = (UINT)(rc.bottom - rc.top);
-                if (g_gfx.Device())
-                    g_gfx.Resize(w, h);
-            }
-            return 0;
-        }
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
@@ -214,15 +190,77 @@ void InitializeWindow(HINSTANCE hInstance) {
 }
 
 void InitializeDirect3D() {
-    if (!g_gfx.Init(g_hwnd, WINDOW_WIDTH, WINDOW_HEIGHT)) {
-        MessageBox(g_hwnd, L"GraphicsDevice::Init failed.", L"Error", MB_OK);
-        PostQuitMessage(0);
+    UINT dxgiFactoryFlags = 0;
+#ifdef _DEBUG
+    ComPtr<ID3D12Debug> debugController;
+    if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
+        debugController->EnableDebugLayer();
+        dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
     }
+#endif
+
+    ComPtr<IDXGIFactory6> factory;
+    CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory));
+
+    ComPtr<IDXGIAdapter1> hardwareAdapter;
+    for (UINT adapterIndex = 0; SUCCEEDED(factory->EnumAdapters1(adapterIndex, &hardwareAdapter)); ++adapterIndex) {
+        DXGI_ADAPTER_DESC1 desc;
+        hardwareAdapter->GetDesc1(&desc);
+        if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) continue;
+        if (SUCCEEDED(D3D12CreateDevice(hardwareAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&g_device)))) break;
+    }
+
+    D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+    queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+    queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    g_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&g_commandQueue));
+
+    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+    swapChainDesc.BufferCount = 2;
+    swapChainDesc.Width = WINDOW_WIDTH;
+    swapChainDesc.Height = WINDOW_HEIGHT;
+    swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    swapChainDesc.SampleDesc.Count = 1;
+
+    ComPtr<IDXGISwapChain1> swapChain1;
+    factory->CreateSwapChainForHwnd(
+        g_commandQueue.Get(),
+        g_hwnd,
+        &swapChainDesc,
+        nullptr,
+        nullptr,
+        &swapChain1
+    );
+
+    swapChain1.As(&g_swapChain);
+    g_frameIndex = g_swapChain->GetCurrentBackBufferIndex();
+
+    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+    rtvHeapDesc.NumDescriptors = 2;
+    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    g_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&g_rtvHeap));
+    g_rtvDescriptorSize = g_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+    for (UINT i = 0; i < 2; i++) {
+        g_swapChain->GetBuffer(i, IID_PPV_ARGS(&g_renderTargets[i]));
+        g_device->CreateRenderTargetView(g_renderTargets[i].Get(), nullptr, rtvHandle);
+        rtvHandle.ptr += g_rtvDescriptorSize;
+    }
+
+    g_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_commandAllocator));
+    g_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_commandAllocator.Get(), nullptr, IID_PPV_ARGS(&g_commandList));
+    g_commandList->Close();
+
+    g_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_fence));
+    g_fenceValue = 1;
+    g_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 }
 
 void CreatePipelineState() {
-    auto* device = g_gfx.Device();
-
     // Create root signature
     CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
     Microsoft::WRL::ComPtr<ID3DBlob> signature;
@@ -233,7 +271,7 @@ void CreatePipelineState() {
         }
         return;
     }
-    device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&g_rootSignature));
+    g_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&g_rootSignature));
 
     // Create pipeline state
     ComPtr<ID3DBlob> vertexShader;
@@ -292,39 +330,9 @@ void CreatePipelineState() {
     psoDesc.pRootSignature = g_rootSignature.Get();
     psoDesc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
     psoDesc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
-    psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-
-    // RasterizerState (defaults + your overrides)
     psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
     psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-    psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
-    psoDesc.RasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
-    psoDesc.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
-    psoDesc.RasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-    psoDesc.RasterizerState.DepthClipEnable = TRUE;
-    psoDesc.RasterizerState.MultisampleEnable = FALSE;
-    psoDesc.RasterizerState.AntialiasedLineEnable = FALSE;
-    psoDesc.RasterizerState.ForcedSampleCount = 0;
-    psoDesc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-
-    // BlendState (defaults)
-    psoDesc.BlendState.AlphaToCoverageEnable = FALSE;
-    psoDesc.BlendState.IndependentBlendEnable = FALSE;
-
-    D3D12_RENDER_TARGET_BLEND_DESC rtBlend = {};
-    rtBlend.BlendEnable = FALSE;
-    rtBlend.LogicOpEnable = FALSE;
-    rtBlend.SrcBlend = D3D12_BLEND_ONE;
-    rtBlend.DestBlend = D3D12_BLEND_ZERO;
-    rtBlend.BlendOp = D3D12_BLEND_OP_ADD;
-    rtBlend.SrcBlendAlpha = D3D12_BLEND_ONE;
-    rtBlend.DestBlendAlpha = D3D12_BLEND_ZERO;
-    rtBlend.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-    rtBlend.LogicOp = D3D12_LOGIC_OP_NOOP;
-    rtBlend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-    for (int i = 0; i < 8; i++) { psoDesc.BlendState.RenderTarget[i] = rtBlend; }
-
+    psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
     psoDesc.DepthStencilState.DepthEnable = FALSE;
     psoDesc.DepthStencilState.StencilEnable = FALSE;
     psoDesc.SampleMask = UINT_MAX;
@@ -334,12 +342,12 @@ void CreatePipelineState() {
     psoDesc.SampleDesc.Count = 1;
     psoDesc.SampleDesc.Quality = 0;
 
-    if (FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&g_pipelineState)))) { return; }
+    if (FAILED(g_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&g_pipelineState)))) {
+        return;
+    }
 }
 
 void CreateVertexBuffer() {
-    auto* device = g_gfx.Device();
-
     // Create vertex buffer
     const float scale = 0.5f; // 50% of viewport
     Vertex triangleVertices[] = {
@@ -363,7 +371,7 @@ void CreateVertexBuffer() {
 
     CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
-    device->CreateCommittedResource(
+    g_device->CreateCommittedResource(
         &heapProps,
         D3D12_HEAP_FLAG_NONE,
         &resourceDesc,
@@ -383,59 +391,78 @@ void CreateVertexBuffer() {
 }
 
 void PopulateCommandList() {
-    g_gfx.BeginFrame(g_pipelineState.Get());
+    g_commandAllocator->Reset();
+    g_commandList->Reset(g_commandAllocator.Get(), g_pipelineState.Get());
 
-    auto* cmdList = g_gfx.CmdList();
-    auto* backBuffer = g_gfx.CurrentBackBuffer();
-    auto rtvHandle = g_gfx.CurrentBackBufferRTV();
-
-    cmdList->SetGraphicsRootSignature(g_rootSignature.Get());
+    g_commandList->SetGraphicsRootSignature(g_rootSignature.Get());
     
-    UINT w = g_gfx.Width(), h = g_gfx.Height();
-    if (w == 0 || h == 0) return;
     D3D12_VIEWPORT viewport{
-        0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f
+        0.0f,                                    // TopLeftX
+        0.0f,                                    // TopLeftY
+        static_cast<float>(WINDOW_WIDTH),        // Width
+        static_cast<float>(WINDOW_HEIGHT),       // Height
+        0.0f,                                    // MinDepth
+        1.0f                                     // MaxDepth
     };
-    D3D12_RECT scissorRect{ 0, 0, (LONG)w, (LONG)h };
-    cmdList->RSSetViewports(1, &viewport);
-    cmdList->RSSetScissorRects(1, &scissorRect);
+    D3D12_RECT scissorRect{
+        0,              // left
+        0,              // top
+        WINDOW_WIDTH,   // right
+        WINDOW_HEIGHT   // bottom
+    };
+    g_commandList->RSSetViewports(1, &viewport);
+    g_commandList->RSSetScissorRects(1, &scissorRect);
 
-    // Present -> RenderTarget
-    {
-        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            backBuffer,
-            D3D12_RESOURCE_STATE_PRESENT,
-            D3D12_RESOURCE_STATE_RENDER_TARGET
-        );
-        cmdList->ResourceBarrier(1, &barrier);
-    }
+    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(g_renderTargets[g_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    g_commandList->ResourceBarrier(1, &barrier);
 
-    cmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+    rtvHandle.ptr += g_frameIndex * g_rtvDescriptorSize;
+    g_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
     const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-    cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    g_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
-    cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
+    g_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView{
         g_vertexBuffer->GetGPUVirtualAddress(),  // BufferLocation
         sizeof(Vertex) * 3,                      // SizeInBytes
         sizeof(Vertex)                           // StrideInBytes
     };
-    cmdList->IASetVertexBuffers(0, 1, &vertexBufferView);
-    cmdList->DrawInstanced(3, 1, 0, 0);
+    g_commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
+    g_commandList->DrawInstanced(3, 1, 0, 0);
 
-    // RenderTarget -> Present
-    {
-        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            backBuffer,
-            D3D12_RESOURCE_STATE_RENDER_TARGET,
-            D3D12_RESOURCE_STATE_PRESENT
-        );
-        cmdList->ResourceBarrier(1, &barrier);
+    barrier = CD3DX12_RESOURCE_BARRIER::Transition(g_renderTargets[g_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+    g_commandList->ResourceBarrier(1, &barrier);
+
+    g_commandList->Close();
+
+    ID3D12CommandList* ppCommandLists[] = { g_commandList.Get() };
+    g_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+}
+
+void WaitForGpu() {
+    const UINT64 fence = g_fenceValue;
+    g_commandQueue->Signal(g_fence.Get(), fence);
+    g_fenceValue++;
+
+    if (g_fence->GetCompletedValue() < fence) {
+        g_fence->SetEventOnCompletion(fence, g_fenceEvent);
+        WaitForSingleObject(g_fenceEvent, INFINITE);
+    }
+}
+
+void MoveToNextFrame() {
+    const UINT64 currentFenceValue = g_fenceValue;
+    g_commandQueue->Signal(g_fence.Get(), currentFenceValue);
+    g_fenceValue++;
+
+    if (g_fence->GetCompletedValue() < currentFenceValue) {
+        g_fence->SetEventOnCompletion(currentFenceValue, g_fenceEvent);
+        WaitForSingleObject(g_fenceEvent, INFINITE);
     }
 
-    g_gfx.EndFrameAndPresent(true);
+    g_frameIndex = 1 - g_frameIndex;
 }
 
 void UpdateVertexBuffer() {
@@ -470,13 +497,11 @@ int HitTestVertex(int mouseX, int mouseY) {
 
 void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY) {
     // Convert screen coordinates to NDC (Normalized Device Coordinates)
-    // Screen coordinates: (0,0) at top-left, (Width, Height) at bottom-right
+    // Screen coordinates: (0,0) at top-left, (WINDOW_WIDTH, WINDOW_HEIGHT) at bottom-right
     // NDC coordinates: (-1,-1) at bottom-left, (1,1) at top-right
     
-    uint32_t w = g_gfx.Width(), h = g_gfx.Height();
-    if (w == 0 || h == 0) { ndcX = ndcY = 0.0f; return; }
-    ndcX = (2.0f * screenX / (float)w) - 1.0f;
-    ndcY = 1.0f - (2.0f * screenY / (float)h); // Flip Y axis
+    ndcX = (2.0f * screenX / WINDOW_WIDTH) - 1.0f;
+    ndcY = 1.0f - (2.0f * screenY / WINDOW_HEIGHT); // Flip Y axis
 }
 
 void BeginFrameInput() {

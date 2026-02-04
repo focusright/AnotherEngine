@@ -35,7 +35,6 @@ UINT g_frameIndex;
 ComPtr<ID3D12Fence> g_fence;
 UINT64 g_fenceValue;
 HANDLE g_fenceEvent;
-ComPtr<IDXGISwapChain3> g_swapChain;
 
 GraphicsDevice g_gfx;
 
@@ -104,7 +103,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         Update(0.0f); // dt later
 
         PopulateCommandList();
-        g_swapChain->Present(1, 0);
+        g_gfx.SwapChain()->Present(1, 0);
         MoveToNextFrame();
     }
 
@@ -232,18 +231,13 @@ void InitializeDirect3D() {
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     swapChainDesc.SampleDesc.Count = 1;
 
-    ComPtr<IDXGISwapChain1> swapChain1;
-    factory->CreateSwapChainForHwnd(
-        g_gfx.Queue(),
-        g_hwnd,
-        &swapChainDesc,
-        nullptr,
-        nullptr,
-        &swapChain1
-    );
+    if (!g_gfx.CreateSwapChain(factory.Get(), g_hwnd, WINDOW_WIDTH, WINDOW_HEIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, 2)) {
+        MessageBox(g_hwnd, L"CreateSwapChain failed.", L"Error", MB_OK);
+        PostQuitMessage(0);
+        return;
+    }
 
-    swapChain1.As(&g_swapChain);
-    g_frameIndex = g_swapChain->GetCurrentBackBufferIndex();
+    g_frameIndex = g_gfx.SwapChain()->GetCurrentBackBufferIndex();
 
     D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
     rtvHeapDesc.NumDescriptors = 2;
@@ -254,7 +248,7 @@ void InitializeDirect3D() {
 
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_rtvHeap->GetCPUDescriptorHandleForHeapStart();
     for (UINT i = 0; i < 2; i++) {
-        g_swapChain->GetBuffer(i, IID_PPV_ARGS(&g_renderTargets[i]));
+        g_gfx.SwapChain()->GetBuffer(i, IID_PPV_ARGS(&g_renderTargets[i]));
         g_device->CreateRenderTargetView(g_renderTargets[i].Get(), nullptr, rtvHandle);
         rtvHandle.ptr += g_rtvDescriptorSize;
     }
@@ -266,8 +260,6 @@ void InitializeDirect3D() {
     g_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_fence));
     g_fenceValue = 1;
     g_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-
-    g_gfx.SetSwapChain(g_swapChain);
 }
 
 void CreatePipelineState() {
@@ -467,7 +459,7 @@ void MoveToNextFrame() {
     g_gfx.Queue()->Signal(g_fence.Get(), fenceValue);
     g_fenceValue++;
 
-    g_frameIndex = g_swapChain->GetCurrentBackBufferIndex();
+    g_frameIndex = g_gfx.SwapChain()->GetCurrentBackBufferIndex();
 
     if (g_fence->GetCompletedValue() < fenceValue) {
         g_fence->SetEventOnCompletion(fenceValue, g_fenceEvent);

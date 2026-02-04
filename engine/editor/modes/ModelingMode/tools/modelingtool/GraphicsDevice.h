@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstdint>
 #include <wrl/client.h>
 #include <dxgi1_6.h>
 #include <d3d12.h>
+
 
 class GraphicsDevice {
 public:
@@ -14,6 +16,7 @@ public:
     IDXGISwapChain3* SwapChain() const { return m_swapChain.Get(); }
 
     bool CreateCommandQueue(ID3D12Device* device);
+    bool CreateSwapChain(IDXGIFactory6* factory, HWND hwnd, uint32_t width, uint32_t height, DXGI_FORMAT format, uint32_t bufferCount);
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Device> m_device;

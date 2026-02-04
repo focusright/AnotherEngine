@@ -102,7 +102,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         Update(0.0f); // dt later
 
         PopulateCommandList();
-        WaitForGpu();
         g_swapChain->Present(1, 0);
         MoveToNextFrame();
     }
@@ -453,16 +452,16 @@ void WaitForGpu() {
 }
 
 void MoveToNextFrame() {
-    const UINT64 currentFenceValue = g_fenceValue;
-    g_commandQueue->Signal(g_fence.Get(), currentFenceValue);
+    const UINT64 fenceValue = g_fenceValue;
+    g_commandQueue->Signal(g_fence.Get(), fenceValue);
     g_fenceValue++;
 
-    if (g_fence->GetCompletedValue() < currentFenceValue) {
-        g_fence->SetEventOnCompletion(currentFenceValue, g_fenceEvent);
+    g_frameIndex = g_swapChain->GetCurrentBackBufferIndex();
+
+    if (g_fence->GetCompletedValue() < fenceValue) {
+        g_fence->SetEventOnCompletion(fenceValue, g_fenceEvent);
         WaitForSingleObject(g_fenceEvent, INFINITE);
     }
-
-    g_frameIndex = 1 - g_frameIndex;
 }
 
 void UpdateVertexBuffer() {

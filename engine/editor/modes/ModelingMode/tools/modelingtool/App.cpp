@@ -5,8 +5,6 @@
 
 using namespace DirectX;
 
-extern void UpdateVertexBuffer();
-
 void App::BeginFrameInput() {
     m_input.lmbPressed = false;
     m_input.lmbReleased = false;
@@ -43,7 +41,7 @@ void App::Update(float /*dt*/) {
 
     // 4) Upload once per frame
     if (m_renderMesh->dirty) {
-        UpdateVertexBuffer();
+        m_engine->UpdateVertexBuffer(m_editMesh, m_renderMesh, m_hwnd);
         m_renderMesh->dirty = false;
     }
 }

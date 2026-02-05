@@ -38,12 +38,6 @@ GraphicsDevice g_gfx;
 Engine g_engine;
 App g_app;
 
-// Vertex structure
-struct Vertex {
-    XMFLOAT3 position;
-    XMFLOAT4 color;
-};
-
 struct InputState {
     int mouseX = 0;
     int mouseY = 0;
@@ -63,7 +57,6 @@ POINT g_lastMousePos = {0, 0};
 
 EditableMesh g_editMesh;
 RenderMesh   g_renderMesh;
-Vertex       g_drawVertices[3]; // staging array used only for upload (positions+colors)
 
 // Forward declarations
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -71,7 +64,6 @@ void InitializeWindow(HINSTANCE hInstance);
 void InitializeDirect3D();
 void CreatePipelineState();
 void CreateVertexBuffer();
-void UpdateVertexBuffer();
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     InitializeWindow(hInstance);
@@ -79,12 +71,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     
     InitializeDirect3D();
     CreatePipelineState();
+    
     CreateVertexBuffer();
+    g_engine.SetVertexBuffer(g_vertexBuffer.Get());
 
     g_engine.SetGraphicsDevice(&g_gfx);
     g_app.SetEngine(&g_engine);
     g_app.SetMeshes(&g_editMesh, &g_renderMesh);
     g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), WINDOW_WIDTH, WINDOW_HEIGHT);
+    g_engine.SetVertexBuffer(g_vertexBuffer.Get());
 
     // Main message loop
     MSG msg = {};
@@ -326,13 +321,12 @@ void CreateVertexBuffer() {
         g_editMesh.SetVertex(i, triangleVertices[i].position);
     }
 
-    // GPU staging uses colors + positions pulled from edit mesh
     for (uint32_t i = 0; i < 3; ++i) {
-        g_drawVertices[i] = triangleVertices[i];
-        g_drawVertices[i].position = g_editMesh.GetVertex(i);
+        g_renderMesh.drawVertices[i] = triangleVertices[i];
+        g_renderMesh.drawVertices[i].position = g_editMesh.GetVertex(i);
     }
 
-    const UINT vertexBufferSize = sizeof(g_drawVertices);
+    const UINT vertexBufferSize = sizeof(g_renderMesh.drawVertices);
 
     CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
@@ -349,30 +343,8 @@ void CreateVertexBuffer() {
     UINT8* pVertexDataBegin = nullptr;
     D3D12_RANGE readRange = { 0, 0 };
     g_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
-    memcpy(pVertexDataBegin, g_drawVertices, sizeof(g_drawVertices));
+    memcpy(pVertexDataBegin, g_renderMesh.drawVertices, sizeof(g_renderMesh.drawVertices));
     g_vertexBuffer->Unmap(0, nullptr);
 
     g_renderMesh.dirty = false;
-}
-
-void UpdateVertexBuffer() {
-    if (!g_vertexBuffer) { return; }
-
-    for (uint32_t i = 0; i < 3; ++i) {
-        g_drawVertices[i].position = g_editMesh.GetVertex(i);
-    }
-
-    UINT8* pVertexDataBegin = nullptr;
-    D3D12_RANGE readRange = { 0, 0 };
-
-    HRESULT hr = g_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
-    if (FAILED(hr) || !pVertexDataBegin) {
-        wchar_t buf[256];
-        swprintf_s(buf, L"VertexBuffer Map failed. hr=0x%08X", (unsigned)hr);
-        MessageBox(g_hwnd, buf, L"Error", MB_OK);
-        return;
-    }
-
-    memcpy(pVertexDataBegin, g_drawVertices, sizeof(g_drawVertices));
-    g_vertexBuffer->Unmap(0, nullptr);
 }

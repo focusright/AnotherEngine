@@ -1,12 +1,9 @@
+#include "d3dx12.h"
 #include "Engine.h"
 #include "GraphicsDevice.h"
-#include "d3dx12.h"
+#include "RenderMesh.h"
+#include "EditableMesh.h"
 #include <DirectXMath.h>
-
-struct Vertex {
-    DirectX::XMFLOAT3 position;
-    DirectX::XMFLOAT4 color;
-};
 
 void Engine::SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12GraphicsCommandList* commandList, ID3D12RootSignature* rootSignature, ID3D12PipelineState* pipelineState, ID3D12Fence* fence, HANDLE fenceEvent, UINT64* fenceValue, ID3D12Resource* vertexBuffer, uint32_t width, uint32_t height) {
     m_commandAllocator = commandAllocator;
@@ -20,6 +17,29 @@ void Engine::SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12Gr
     m_width = width;
     m_height = height;
 }
+
+void Engine::UpdateVertexBuffer(const EditableMesh* editMesh, RenderMesh* renderMesh, HWND hwnd) {
+    if (!m_vertexBuffer) { return; }
+
+    for (uint32_t i = 0; i < 3; ++i) {
+        renderMesh->drawVertices[i].position = editMesh->GetVertex(i);
+    }
+
+    UINT8* pVertexDataBegin = nullptr;
+    D3D12_RANGE readRange = { 0, 0 };
+
+    HRESULT hr = m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
+    if (FAILED(hr) || !pVertexDataBegin) {
+        wchar_t buf[256];
+        swprintf_s(buf, L"VertexBuffer Map failed. hr=0x%08X", (unsigned)hr);
+        MessageBox(hwnd, buf, L"Error", MB_OK);
+        return;
+    }
+
+    memcpy(pVertexDataBegin, renderMesh->drawVertices, sizeof(renderMesh->drawVertices));
+    m_vertexBuffer->Unmap(0, nullptr);
+}
+
 
 void Engine::PopulateCommandList() {
     m_commandAllocator->Reset();

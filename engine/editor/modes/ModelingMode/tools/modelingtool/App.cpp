@@ -112,6 +112,8 @@ int App::HitTestVertex(int mouseX, int mouseY) {
 }
 
 void App::ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY) {
+    if (!m_hwnd) { ndcX = 0.0f; ndcY = 0.0f; return; }
+
     RECT rc;
     GetClientRect(m_hwnd, &rc);
 

@@ -11,6 +11,7 @@ class App {
 public:
     void SetEngine(Engine* engine) { m_engine = engine; }
     void SetMeshes(EditableMesh* editMesh, RenderMesh* renderMesh) { m_editMesh = editMesh; m_renderMesh = renderMesh; }
+    void SetWindow(HWND hwnd) { m_hwnd = hwnd; }
 
     void BeginFrameInput();
     void Update(float dt);

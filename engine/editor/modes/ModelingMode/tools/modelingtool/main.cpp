@@ -75,6 +75,8 @@ void UpdateVertexBuffer();
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     InitializeWindow(hInstance);
+    g_app.SetWindow(g_hwnd);
+    
     InitializeDirect3D();
     CreatePipelineState();
     CreateVertexBuffer();

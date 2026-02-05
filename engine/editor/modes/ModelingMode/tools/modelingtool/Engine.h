@@ -15,7 +15,6 @@ public:
     GraphicsDevice* Gfx() const { return m_gfx; }
 
     void SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12GraphicsCommandList* commandList, ID3D12RootSignature* rootSignature, ID3D12PipelineState* pipelineState, ID3D12Fence* fence, HANDLE fenceEvent, UINT64* fenceValue, ID3D12Resource* vertexBuffer, uint32_t width, uint32_t height);
-    void SetVertexBuffer(ID3D12Resource* vertexBuffer) { m_vertexBuffer = vertexBuffer; }
     void UpdateVertexBuffer(const EditableMesh* editMesh, RenderMesh* renderMesh, HWND hwnd);
 
     void PopulateCommandList();

@@ -20,6 +20,7 @@ public:
     void PopulateCommandList();
     void WaitForGpu();
     void MoveToNextFrame();
+    void RenderFrame();
 
 private:
     GraphicsDevice* m_gfx = nullptr;

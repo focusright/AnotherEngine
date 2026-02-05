@@ -89,10 +89,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         }
 
         g_app.Update(0.0f);
-
-        g_engine.PopulateCommandList();
-        g_gfx.SwapChain()->Present(1, 0);
-        g_engine.MoveToNextFrame();
+        g_engine.RenderFrame();
     }
 
     return static_cast<int>(msg.wParam);

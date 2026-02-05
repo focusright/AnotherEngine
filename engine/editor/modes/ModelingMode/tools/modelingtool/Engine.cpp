@@ -113,3 +113,9 @@ void Engine::MoveToNextFrame() {
 
     m_gfx->SetFrameIndexFromSwapChain();
 }
+
+void Engine::RenderFrame() {
+    PopulateCommandList();
+    m_gfx->SwapChain()->Present(1, 0);
+    MoveToNextFrame();
+}

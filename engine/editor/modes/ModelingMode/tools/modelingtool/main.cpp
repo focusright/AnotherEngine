@@ -55,7 +55,6 @@ struct InputState {
 
 InputState g_input;
 
-
 // Mouse interaction variables
 bool g_isDragging = false;
 int g_selectedVertex = -1;
@@ -65,7 +64,6 @@ POINT g_lastMousePos = {0, 0};
 EditableMesh g_editMesh;
 RenderMesh   g_renderMesh;
 Vertex       g_drawVertices[3]; // staging array used only for upload (positions+colors)
-
 
 // Forward declarations
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -79,9 +77,6 @@ void MoveToNextFrame();
 void UpdateVertexBuffer();
 int HitTestVertex(int mouseX, int mouseY);
 void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY);
-
-void BeginFrameInput();   // clears edge flags
-void Update(float dt);    // runs tool logic
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
@@ -97,14 +92,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Main message loop
     MSG msg = {};
     while (msg.message != WM_QUIT) {
-        BeginFrameInput(); // clear edge flags at start of frame
+        g_app.BeginFrameInput();
 
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
 
-        Update(0.0f); // dt later
+        g_app.Update(0.0f);
 
         PopulateCommandList();
         g_gfx.SwapChain()->Present(1, 0);
@@ -115,6 +110,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    bool handled = false;
+    LRESULT appResult = g_app.HandleWindowMessage(hwnd, uMsg, wParam, lParam, handled);
+    if (handled) return appResult;
+
     switch (uMsg) {
         case WM_DESTROY:
             PostQuitMessage(0);
@@ -125,34 +124,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 return 0;
             }
             break;
-        case WM_LBUTTONDOWN: {
-            g_input.lmbDown = true;
-            g_input.lmbPressed = true;
-
-            g_input.mouseX = GET_X_LPARAM(lParam);
-            g_input.mouseY = GET_Y_LPARAM(lParam);
-
-            SetCapture(hwnd);
-            return 0;
-        }
-        case WM_LBUTTONUP: {
-            g_input.lmbDown = false;
-            g_input.lmbReleased = true;
-
-            g_input.mouseX = GET_X_LPARAM(lParam);
-            g_input.mouseY = GET_Y_LPARAM(lParam);
-
-            ReleaseCapture();
-            return 0;
-        }
-        case WM_MOUSEMOVE: {
-            g_input.mouseX = GET_X_LPARAM(lParam);
-            g_input.mouseY = GET_Y_LPARAM(lParam);
-            return 0;
-        }
-        case WM_SETCURSOR:
-            SetCursor(LoadCursor(nullptr, IDC_ARROW));
-            return TRUE;
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
@@ -508,44 +479,4 @@ void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY) {
     
     ndcX = (2.0f * screenX / WINDOW_WIDTH) - 1.0f;
     ndcY = 1.0f - (2.0f * screenY / WINDOW_HEIGHT); // Flip Y axis
-}
-
-void BeginFrameInput() {
-    g_input.lmbPressed = false;
-    g_input.lmbReleased = false;
-}
-
-void Update(float /*dt*/) {
-    // 1) On press: select a vertex
-    if (g_input.lmbPressed) {
-        g_selectedVertex = HitTestVertex(g_input.mouseX, g_input.mouseY);
-        g_isDragging = (g_selectedVertex != -1);
-        g_lastMousePos = { g_input.mouseX, g_input.mouseY };
-    }
-
-    // 2) On release: stop dragging
-    if (g_input.lmbReleased) {
-        g_isDragging = false;
-        g_selectedVertex = -1;
-    }
-
-    // 3) While dragging: edit the mesh (truth), mark dirty
-    if (g_input.lmbDown && g_isDragging && g_selectedVertex != -1) {
-        float ndcX, ndcY;
-        ScreenToNDC(g_input.mouseX, g_input.mouseY, ndcX, ndcY);
-
-        // Authoring mesh is truth
-        XMFLOAT3 p = g_editMesh.GetVertex((VertexID)g_selectedVertex);
-        p.x = ndcX;
-        p.y = ndcY;
-        g_editMesh.SetVertex((VertexID)g_selectedVertex, p);
-
-        g_renderMesh.dirty = true;
-    }
-
-    // 4) Upload once per frame (not inside WindowProc)
-    if (g_renderMesh.dirty) {
-        UpdateVertexBuffer();
-        g_renderMesh.dirty = false;
-    }
 }

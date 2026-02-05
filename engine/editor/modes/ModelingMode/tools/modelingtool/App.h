@@ -1,5 +1,7 @@
 #pragma once
 
+#include <windows.h>
+#include <windowsx.h>
 #include "Engine.h"
 
 struct EditableMesh;
@@ -10,12 +12,28 @@ public:
     void SetEngine(Engine* engine) { m_engine = engine; }
     void SetMeshes(EditableMesh* editMesh, RenderMesh* renderMesh) { m_editMesh = editMesh; m_renderMesh = renderMesh; }
 
-    Engine* GetEngine() const { return m_engine; }
-    EditableMesh* EditMesh() const { return m_editMesh; }
-    RenderMesh* RenderMeshPtr() const { return m_renderMesh; }
+    void BeginFrameInput();
+    void Update(float dt);
+
+    LRESULT HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bool& handled);
 
 private:
-    Engine* m_engine = nullptr;           // owned elsewhere for now (main.cpp baseline)
-    EditableMesh* m_editMesh = nullptr;   // owned elsewhere for now
-    RenderMesh* m_renderMesh = nullptr;   // owned elsewhere for now
+    struct InputState {
+        int mouseX = 0;
+        int mouseY = 0;
+
+        bool lmbDown = false;      // current state
+        bool lmbPressed = false;   // edge: went down this frame
+        bool lmbReleased = false;  // edge: went up this frame
+    };
+
+    Engine* m_engine = nullptr;
+    EditableMesh* m_editMesh = nullptr;
+    RenderMesh* m_renderMesh = nullptr;
+
+    InputState m_input;
+
+    bool m_isDragging = false;
+    int m_selectedVertex = -1;
+    POINT m_lastMousePos = { 0, 0 };
 };

@@ -9,6 +9,8 @@
 #include "EditableMesh.h"
 #include "RenderMesh.h"
 #include "GraphicsDevice.h"
+#include "Engine.h"
+#include "App.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -32,8 +34,9 @@ ComPtr<ID3D12Resource> g_vertexBuffer;
 ComPtr<ID3D12Fence> g_fence;
 UINT64 g_fenceValue;
 HANDLE g_fenceEvent;
-
 GraphicsDevice g_gfx;
+Engine g_engine;
+App g_app;
 
 // Vertex structure
 struct Vertex {
@@ -86,6 +89,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     InitializeDirect3D();
     CreatePipelineState();
     CreateVertexBuffer();
+
+    g_engine.SetGraphicsDevice(&g_gfx);
+    g_app.SetEngine(&g_engine);
+    g_app.SetMeshes(&g_editMesh, &g_renderMesh);
 
     // Main message loop
     MSG msg = {};

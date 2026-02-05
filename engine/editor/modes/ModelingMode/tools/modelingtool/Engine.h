@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <windows.h>
+#include <DirectXMath.h>
 #include <d3d12.h>
 
 class GraphicsDevice;
@@ -22,6 +23,8 @@ public:
     void MoveToNextFrame();
     void RenderFrame();
 
+    void SetViewProj(const DirectX::XMFLOAT4X4& viewProj);
+
 private:
     GraphicsDevice* m_gfx = nullptr;
 
@@ -37,4 +40,6 @@ private:
 
     uint32_t m_width = 0;
     uint32_t m_height = 0;
+
+    DirectX::XMFLOAT4X4 m_viewProj;
 };

@@ -210,14 +210,17 @@ void InitializeDirect3D() {
 }
 
 void CreatePipelineState() {
-    // Create root signature
-    CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+    // Create root signature (1 root param: 16 32-bit constants for a 4x4 matrix at b0)
+    CD3DX12_ROOT_PARAMETER rootParams[1];
+    rootParams[0].InitAsConstants(16, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
+    CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
+    rootSignatureDesc.Init(_countof(rootParams), rootParams, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
     Microsoft::WRL::ComPtr<ID3DBlob> signature;
     Microsoft::WRL::ComPtr<ID3DBlob> error;
     if (FAILED(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error))) {
-        if (error) {
-            OutputDebugStringA(static_cast<char*>(error->GetBufferPointer()));
-        }
+        if (error) { OutputDebugStringA(static_cast<char*>(error->GetBufferPointer())); }
         return;
     }
     g_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&g_rootSignature));
@@ -231,6 +234,10 @@ void CreatePipelineState() {
 #endif
 
     const char* vertexShaderSource = R"(
+        cbuffer CameraCB : register(b0) {
+            row_major float4x4 uViewProj;
+        };
+
         struct PSInput {
             float4 position : SV_POSITION;
             float4 color : COLOR;
@@ -238,11 +245,12 @@ void CreatePipelineState() {
 
         PSInput VSMain(float3 position : POSITION, float4 color : COLOR) {
             PSInput result;
-            result.position = float4(position, 1.0f);
+            result.position = mul(float4(position, 1.0f), uViewProj);
             result.color = color;
             return result;
         }
     )";
+
 
     const char* pixelShaderSource = R"(
         struct PSInput {

@@ -24,9 +24,15 @@ private:
         int mouseX = 0;
         int mouseY = 0;
 
-        bool lmbDown = false;      // current state
-        bool lmbPressed = false;   // edge: went down this frame
-        bool lmbReleased = false;  // edge: went up this frame
+        bool lmbDown = false;
+        bool lmbPressed = false;
+        bool lmbReleased = false;
+
+        bool rmbDown = false;
+        bool rmbPressed = false;
+        bool rmbReleased = false;
+
+        int wheelDelta = 0;
     };
 
     Engine* m_engine = nullptr;
@@ -40,6 +46,16 @@ private:
     POINT m_lastMousePos = { 0, 0 };
     HWND m_hwnd = nullptr;
 
+    float m_panX = 0.0f;
+    float m_panY = 0.0f;
+    float m_zoom = 1.0f;
+
+    bool m_colorsInit = false;
+    DirectX::XMFLOAT4 m_baseColors[3];
+
+
     int HitTestVertex(int mouseX, int mouseY);
     void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY);
+    void ScreenToWorld(int screenX, int screenY, float& worldX, float& worldY);
+    void UpdateViewProj();
 };

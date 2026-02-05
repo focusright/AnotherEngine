@@ -40,12 +40,12 @@ void Engine::UpdateVertexBuffer(const EditableMesh* editMesh, RenderMesh* render
     m_vertexBuffer->Unmap(0, nullptr);
 }
 
-
 void Engine::PopulateCommandList() {
     m_commandAllocator->Reset();
     m_commandList->Reset(m_commandAllocator, m_pipelineState);
 
     m_commandList->SetGraphicsRootSignature(m_rootSignature);
+    m_commandList->SetGraphicsRoot32BitConstants(0, 16, &m_viewProj, 0);
 
     D3D12_VIEWPORT viewport{
         0.0f,
@@ -118,4 +118,8 @@ void Engine::RenderFrame() {
     PopulateCommandList();
     m_gfx->SwapChain()->Present(1, 0);
     MoveToNextFrame();
+}
+
+void Engine::SetViewProj(const DirectX::XMFLOAT4X4& viewProj) {
+    m_viewProj = viewProj;
 }

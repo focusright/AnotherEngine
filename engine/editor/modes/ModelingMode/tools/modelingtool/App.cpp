@@ -46,6 +46,13 @@ void App::Update(float /*dt*/) {
     }
 }
 
+void App::PumpMessages(MSG& msg) {
+    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}
+
 LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bool& handled) {
     handled = false;
 

@@ -82,12 +82,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     MSG msg = {};
     while (msg.message != WM_QUIT) {
         g_app.BeginFrameInput();
-
-        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-
+        g_app.PumpMessages(msg);
         g_app.Update(0.0f);
         g_engine.RenderFrame();
     }

@@ -15,6 +15,7 @@ public:
 
     void BeginFrameInput();
     void Update(float dt);
+    void PumpMessages(MSG& msg);
 
     LRESULT HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bool& handled);
 

@@ -36,4 +36,8 @@ private:
     bool m_isDragging = false;
     int m_selectedVertex = -1;
     POINT m_lastMousePos = { 0, 0 };
+    HWND m_hwnd = nullptr;
+
+    int HitTestVertex(int mouseX, int mouseY);
+    void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY);
 };

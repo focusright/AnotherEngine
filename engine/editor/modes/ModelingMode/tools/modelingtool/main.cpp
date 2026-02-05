@@ -72,9 +72,6 @@ void InitializeDirect3D();
 void CreatePipelineState();
 void CreateVertexBuffer();
 void UpdateVertexBuffer();
-int HitTestVertex(int mouseX, int mouseY);
-void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY);
-
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     InitializeWindow(hInstance);
@@ -376,30 +373,4 @@ void UpdateVertexBuffer() {
 
     memcpy(pVertexDataBegin, g_drawVertices, sizeof(g_drawVertices));
     g_vertexBuffer->Unmap(0, nullptr);
-}
-
-int HitTestVertex(int mouseX, int mouseY) {
-    float ndcX, ndcY;
-    ScreenToNDC(mouseX, mouseY, ndcX, ndcY);
-    
-    const float hitRadius = 0.05f; // Hit radius in NDC space
-    
-    for (int i = 0; i < 3; i++) {
-        XMFLOAT3 p = g_editMesh.GetVertex((VertexID)i);
-        float dx = ndcX - p.x;
-        float dy = ndcY - p.y;
-        float distance = sqrtf(dx * dx + dy * dy);
-        if (distance < hitRadius) return i;
-    }
-    
-    return -1; // No vertex hit
-}
-
-void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY) {
-    // Convert screen coordinates to NDC (Normalized Device Coordinates)
-    // Screen coordinates: (0,0) at top-left, (WINDOW_WIDTH, WINDOW_HEIGHT) at bottom-right
-    // NDC coordinates: (-1,-1) at bottom-left, (1,1) at top-right
-    
-    ndcX = (2.0f * screenX / WINDOW_WIDTH) - 1.0f;
-    ndcY = 1.0f - (2.0f * screenY / WINDOW_HEIGHT); // Flip Y axis
 }

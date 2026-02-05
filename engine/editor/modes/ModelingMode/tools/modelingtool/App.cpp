@@ -5,10 +5,6 @@
 
 using namespace DirectX;
 
-// These functions already exist in main.cpp.
-// We are not inventing new APIs; we are referencing existing ones.
-extern int HitTestVertex(int mouseX, int mouseY);
-extern void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY);
 extern void UpdateVertexBuffer();
 
 void App::BeginFrameInput() {
@@ -96,4 +92,32 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
     }
 
     return 0;
+}
+
+int App::HitTestVertex(int mouseX, int mouseY) {
+    float ndcX = 0.0f, ndcY = 0.0f;
+    ScreenToNDC(mouseX, mouseY, ndcX, ndcY);
+
+    const float hitRadius = 0.05f;
+
+    for (int i = 0; i < 3; ++i) {
+        DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)i);
+        float dx = ndcX - p.x;
+        float dy = ndcY - p.y;
+        float distance = sqrtf(dx * dx + dy * dy);
+        if (distance < hitRadius) return i;
+    }
+
+    return -1;
+}
+
+void App::ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY) {
+    RECT rc;
+    GetClientRect(m_hwnd, &rc);
+
+    float width = float(rc.right - rc.left);
+    float height = float(rc.bottom - rc.top);
+
+    ndcX = (2.0f * screenX / width) - 1.0f;
+    ndcY = 1.0f - (2.0f * screenY / height);
 }

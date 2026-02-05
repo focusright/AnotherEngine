@@ -71,9 +71,6 @@ void InitializeWindow(HINSTANCE hInstance);
 void InitializeDirect3D();
 void CreatePipelineState();
 void CreateVertexBuffer();
-void PopulateCommandList();
-void WaitForGpu();
-void MoveToNextFrame();
 void UpdateVertexBuffer();
 int HitTestVertex(int mouseX, int mouseY);
 void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY);
@@ -88,6 +85,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     g_engine.SetGraphicsDevice(&g_gfx);
     g_app.SetEngine(&g_engine);
     g_app.SetMeshes(&g_editMesh, &g_renderMesh);
+    g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), WINDOW_WIDTH, WINDOW_HEIGHT);
 
     // Main message loop
     MSG msg = {};
@@ -101,9 +99,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         g_app.Update(0.0f);
 
-        PopulateCommandList();
+        g_engine.PopulateCommandList();
         g_gfx.SwapChain()->Present(1, 0);
-        MoveToNextFrame();
+        g_engine.MoveToNextFrame();
     }
 
     return static_cast<int>(msg.wParam);
@@ -358,80 +356,6 @@ void CreateVertexBuffer() {
     g_renderMesh.dirty = false;
 }
 
-void PopulateCommandList() {
-    g_commandAllocator->Reset();
-    g_commandList->Reset(g_commandAllocator.Get(), g_pipelineState.Get());
-
-    g_commandList->SetGraphicsRootSignature(g_rootSignature.Get());
-    
-    D3D12_VIEWPORT viewport{
-        0.0f,                                    // TopLeftX
-        0.0f,                                    // TopLeftY
-        static_cast<float>(WINDOW_WIDTH),        // Width
-        static_cast<float>(WINDOW_HEIGHT),       // Height
-        0.0f,                                    // MinDepth
-        1.0f                                     // MaxDepth
-    };
-    D3D12_RECT scissorRect{
-        0,              // left
-        0,              // top
-        WINDOW_WIDTH,   // right
-        WINDOW_HEIGHT   // bottom
-    };
-    g_commandList->RSSetViewports(1, &viewport);
-    g_commandList->RSSetScissorRects(1, &scissorRect);
-
-    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(g_gfx.CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-    g_commandList->ResourceBarrier(1, &barrier);
-
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_gfx.CurrentRTV();
-    g_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
-
-    const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-    g_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-
-    g_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    D3D12_VERTEX_BUFFER_VIEW vertexBufferView{
-        g_vertexBuffer->GetGPUVirtualAddress(),  // BufferLocation
-        sizeof(Vertex) * 3,                      // SizeInBytes
-        sizeof(Vertex)                           // StrideInBytes
-    };
-    g_commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
-    g_commandList->DrawInstanced(3, 1, 0, 0);
-
-    barrier = CD3DX12_RESOURCE_BARRIER::Transition(g_gfx.CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-
-    g_commandList->ResourceBarrier(1, &barrier);
-    g_commandList->Close();
-
-    ID3D12CommandList* ppCommandLists[] = { g_commandList.Get() };
-    g_gfx.Queue()->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
-}
-
-void WaitForGpu() {
-    const UINT64 fence = g_fenceValue;
-    g_gfx.Queue()->Signal(g_fence.Get(), fence);
-    g_fenceValue++;
-
-    if (g_fence->GetCompletedValue() < fence) {
-        g_fence->SetEventOnCompletion(fence, g_fenceEvent);
-        WaitForSingleObject(g_fenceEvent, INFINITE);
-    }
-}
-
-void MoveToNextFrame() {
-    const UINT64 fenceValue = ++g_fenceValue;
-    g_gfx.Queue()->Signal(g_fence.Get(), fenceValue);
-
-    if (g_fence->GetCompletedValue() < fenceValue) {
-        g_fence->SetEventOnCompletion(fenceValue, g_fenceEvent);
-        WaitForSingleObject(g_fenceEvent, INFINITE);
-    }
-
-    g_gfx.SetFrameIndexFromSwapChain();
-}
-
 void UpdateVertexBuffer() {
     if (!g_vertexBuffer) { return; }
 
@@ -453,7 +377,6 @@ void UpdateVertexBuffer() {
     memcpy(pVertexDataBegin, g_drawVertices, sizeof(g_drawVertices));
     g_vertexBuffer->Unmap(0, nullptr);
 }
-
 
 int HitTestVertex(int mouseX, int mouseY) {
     float ndcX, ndcY;

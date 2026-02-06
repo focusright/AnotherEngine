@@ -59,7 +59,7 @@ private:
     HWND m_hwnd = nullptr;
 
     bool m_colorsInit = false;
-    DirectX::XMFLOAT4 m_baseColors[3];
+    DirectX::XMFLOAT4 m_baseColors[3] = {};
 
     EditorCamera m_camera;
     POINT m_lastCameraMouse = { 0, 0 };

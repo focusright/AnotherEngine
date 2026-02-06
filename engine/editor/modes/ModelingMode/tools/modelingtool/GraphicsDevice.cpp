@@ -1,5 +1,4 @@
 #include "GraphicsDevice.h"
-#include "d3dx12.h"
 
 bool GraphicsDevice::CreateCommandQueue(ID3D12Device* device) {
     if (!device) { return false; }

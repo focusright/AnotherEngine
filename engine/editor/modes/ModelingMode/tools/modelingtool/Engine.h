@@ -6,6 +6,11 @@
 #include <DirectXMath.h>
 #include <d3d12.h>
 
+#pragma warning(push)
+#pragma warning(disable : 6001)
+#include "d3dx12.h"
+#pragma warning(pop)
+
 class GraphicsDevice;
 struct EditableMesh;
 struct RenderMesh;
@@ -41,5 +46,5 @@ private:
     uint32_t m_width = 0;
     uint32_t m_height = 0;
 
-    DirectX::XMFLOAT4X4 m_viewProj;
+    DirectX::XMFLOAT4X4 m_viewProj = {};
 };

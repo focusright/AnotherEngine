@@ -12,5 +12,5 @@ struct Vertex {
 // GPU-side cache state derived from EditableMesh
 struct RenderMesh {
     bool dirty = true;
-    Vertex drawVertices[3];
+    Vertex drawVertices[3] = {};
 };

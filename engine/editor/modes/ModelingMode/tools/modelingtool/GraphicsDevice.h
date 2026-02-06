@@ -5,6 +5,10 @@
 #include <dxgi1_6.h>
 #include <d3d12.h>
 
+#pragma warning(push)
+#pragma warning(disable : 6001)
+#include "d3dx12.h"
+#pragma warning(pop)
 
 class GraphicsDevice {
 public:

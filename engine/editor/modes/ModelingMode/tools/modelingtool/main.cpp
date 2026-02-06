@@ -5,7 +5,6 @@
 #include <wrl/client.h>
 #include <cwchar>
 
-#include "d3dx12.h"
 #include "EditableMesh.h"
 #include "RenderMesh.h"
 #include "GraphicsDevice.h"
@@ -66,7 +65,7 @@ void InitializeDirect3D();
 void CreatePipelineState();
 void CreateVertexBuffer();
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int nCmdShow) {
     InitializeWindow(hInstance);
     InitializeDirect3D();
     CreatePipelineState();

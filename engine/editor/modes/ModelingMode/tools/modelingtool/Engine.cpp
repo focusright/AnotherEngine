@@ -1,4 +1,3 @@
-#include "d3dx12.h"
 #include "Engine.h"
 #include "GraphicsDevice.h"
 #include "RenderMesh.h"

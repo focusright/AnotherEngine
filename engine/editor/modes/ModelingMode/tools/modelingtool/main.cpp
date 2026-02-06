@@ -67,20 +67,17 @@ void CreatePipelineState();
 void CreateVertexBuffer();
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    g_app.Ctx().camera = &g_editorCamera;
-    g_editorCamera.SetLens(DirectX::XM_PIDIV4, 0.1f, 1000.0f);
-
     InitializeWindow(hInstance);
-    g_app.SetWindow(g_hwnd);
-
     InitializeDirect3D();
     CreatePipelineState();
     CreateVertexBuffer();
-
+    
+    g_editorCamera.SetLens(DirectX::XM_PIDIV4, 0.1f, 1000.0f);
     g_engine.SetGraphicsDevice(&g_gfx);
+    g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), WINDOW_WIDTH, WINDOW_HEIGHT);
+    g_app.SetWindow(g_hwnd);
     g_app.SetEngine(&g_engine);
     g_app.SetMeshes(&g_editMesh, &g_renderMesh);
-    g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), WINDOW_WIDTH, WINDOW_HEIGHT);
 
     LARGE_INTEGER freq;
     LARGE_INTEGER prev;

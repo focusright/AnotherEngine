@@ -5,7 +5,9 @@
 
 using namespace DirectX;
 
-App::App(EditorCamera& camera) : m_camera(camera) {}
+App::App(EditorCamera& camera) : m_camera(camera) {
+    m_ctx.camera = &m_camera;
+}
 
 void App::BeginFrameInput() {
     m_input.lmbPressed = false;

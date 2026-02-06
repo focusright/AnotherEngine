@@ -93,7 +93,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         float dt = float(double(now.QuadPart - prev.QuadPart) / double(freq.QuadPart));
         prev = now;
 
-        g_app.Update(0.0f);
+        g_app.Update(dt);
         g_engine.RenderFrame();
     }
 

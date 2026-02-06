@@ -206,6 +206,7 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             return 0;
         }
         case WM_KEYDOWN: {
+            if (wParam == VK_ESCAPE) { handled = false; break; } // let main.cpp handle quit
             if (wParam < 256) {
                 bool wasDown = (lParam & (1 << 30)) != 0;
                 m_input.keys[wParam] = true;

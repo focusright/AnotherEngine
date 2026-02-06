@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include "Engine.h"
+#include "EditorCamera.h"
 
 struct EditableMesh;
 struct RenderMesh;
@@ -28,11 +29,18 @@ private:
         bool lmbPressed = false;
         bool lmbReleased = false;
 
+        bool mmbDown = false;
+        bool mmbPressed = false;
+        bool mmbReleased = false;
+
         bool rmbDown = false;
         bool rmbPressed = false;
         bool rmbReleased = false;
 
         int wheelDelta = 0;
+
+        bool keys[256] = {};
+        bool fPressed = false;
     };
 
     Engine* m_engine = nullptr;
@@ -46,16 +54,15 @@ private:
     POINT m_lastMousePos = { 0, 0 };
     HWND m_hwnd = nullptr;
 
-    float m_panX = 0.0f;
-    float m_panY = 0.0f;
-    float m_zoom = 1.0f;
-
     bool m_colorsInit = false;
     DirectX::XMFLOAT4 m_baseColors[3];
 
+    EditorCamera m_camera;
+    POINT m_lastCameraMouse = { 0, 0 };
 
     int HitTestVertex(int mouseX, int mouseY);
-    void ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY);
-    void ScreenToWorld(int screenX, int screenY, float& worldX, float& worldY);
+    bool ScreenToWorldOnZPlane(int screenX, int screenY, float& worldX, float& worldY);
     void UpdateViewProj();
+    void FocusCamera();
+
 };

@@ -78,11 +78,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     g_app.SetMeshes(&g_editMesh, &g_renderMesh);
     g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), WINDOW_WIDTH, WINDOW_HEIGHT);
 
-    // Main message loop
-    MSG msg = {};
+    LARGE_INTEGER freq;
+    LARGE_INTEGER prev;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&prev);
+
+    MSG msg = {}; // Main message loop
     while (msg.message != WM_QUIT) {
         g_app.BeginFrameInput();
         g_app.PumpMessages(msg);
+
+        LARGE_INTEGER now;
+        QueryPerformanceCounter(&now);
+        float dt = float(double(now.QuadPart - prev.QuadPart) / double(freq.QuadPart));
+        prev = now;
+
         g_app.Update(0.0f);
         g_engine.RenderFrame();
     }

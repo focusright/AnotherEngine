@@ -10,10 +10,13 @@ void App::BeginFrameInput() {
     m_input.lmbReleased = false;
     m_input.rmbPressed = false;
     m_input.rmbReleased = false;
+    m_input.mmbPressed = false;
+    m_input.mmbReleased = false;
     m_input.wheelDelta = 0;
+    m_input.fPressed = false;
 }
 
-void App::Update(float /*dt*/) {
+void App::Update(float dt) {
     if (!m_editMesh || !m_renderMesh || !m_engine) return;
 
     if (!m_colorsInit) {
@@ -21,42 +24,71 @@ void App::Update(float /*dt*/) {
         m_colorsInit = true;
     }
 
-    // Zoom (mouse wheel)
-    if (m_input.wheelDelta != 0) {
-        float steps = float(m_input.wheelDelta) / 120.0f;
-        m_zoom *= powf(1.1f, steps);
-        if (m_zoom < 0.05f) m_zoom = 0.05f;
-        if (m_zoom > 50.0f) m_zoom = 50.0f;
-    }
+    // Update viewport for camera.
+    RECT rc;
+    GetClientRect(m_hwnd, &rc);
+    float width = float(rc.right - rc.left);
+    float height = float(rc.bottom - rc.top);
+    m_camera.SetViewport(width, height);
+    m_camera.SetLens(DirectX::XM_PIDIV4, 0.1f, 1000.0f);
 
-    // Pan (RMB drag) - only if we aren't currently dragging a vertex
+    // Mouse-look (RMB) - only if not dragging a vertex.
     if (m_input.rmbPressed) {
-        m_lastMousePos = { m_input.mouseX, m_input.mouseY };
+        m_lastCameraMouse = { m_input.mouseX, m_input.mouseY };
     }
     if (m_input.rmbDown && !m_isDragging) {
-        RECT rc;
-        GetClientRect(m_hwnd, &rc);
-        float width = float(rc.right - rc.left);
-        float height = float(rc.bottom - rc.top);
-        float aspect = (height > 0.0f) ? (width / height) : 1.0f;
+        int dx = m_input.mouseX - m_lastCameraMouse.x;
+        int dy = m_input.mouseY - m_lastCameraMouse.y;
 
-        int dx = m_input.mouseX - m_lastMousePos.x;
-        int dy = m_input.mouseY - m_lastMousePos.y;
+        m_camera.AddYawPitch(dx * m_camera.mouseSensitivity, dy * m_camera.mouseSensitivity);
 
-        float ndcDx = (2.0f * dx) / width;
-        float ndcDy = (2.0f * dy) / height;
+        m_lastCameraMouse = { m_input.mouseX, m_input.mouseY };
+    }
 
-        m_panX -= ndcDx * (aspect / m_zoom);
-        m_panY += ndcDy * (1.0f / m_zoom);
+    // Pan (MMB) - per your requirement.
+    if (m_input.mmbPressed) {
+        m_lastCameraMouse = { m_input.mouseX, m_input.mouseY };
+    }
+    if (m_input.mmbDown && !m_isDragging) {
+        int dx = m_input.mouseX - m_lastCameraMouse.x;
+        int dy = m_input.mouseY - m_lastCameraMouse.y;
 
-        m_lastMousePos = { m_input.mouseX, m_input.mouseY };
+        m_camera.Pan(float(dx), float(dy));
+
+        m_lastCameraMouse = { m_input.mouseX, m_input.mouseY };
+    }
+
+    // Dolly (wheel).
+    if (m_input.wheelDelta != 0 && !m_isDragging) {
+        float steps = float(m_input.wheelDelta) / 120.0f;
+        m_camera.Dolly(steps);
+    }
+
+    // WASD move only while RMB is held (Unreal-ish).
+    if (m_input.rmbDown && !m_isDragging) {
+        float f = 0.0f;
+        float r = 0.0f;
+
+        if (m_input.keys['W']) f += 1.0f;
+        if (m_input.keys['S']) f -= 1.0f;
+        if (m_input.keys['D']) r += 1.0f;
+        if (m_input.keys['A']) r -= 1.0f;
+
+        if (f != 0.0f || r != 0.0f) {
+            float step = m_camera.moveSpeed * dt;
+            m_camera.MoveLocal(f * step, r * step, 0.0f);
+        }
+    }
+
+    // Focus.
+    if (m_input.fPressed && !m_isDragging) {
+        FocusCamera();
     }
 
     // 1) On press: select a vertex
     if (m_input.lmbPressed) {
         m_selectedVertex = HitTestVertex(m_input.mouseX, m_input.mouseY);
         m_isDragging = (m_selectedVertex != -1);
-        m_lastMousePos = { m_input.mouseX, m_input.mouseY };
 
         for (int i = 0; i < 3; ++i) { m_renderMesh->drawVertices[i].color = m_baseColors[i]; }
         if (m_selectedVertex != -1) { m_renderMesh->drawVertices[m_selectedVertex].color = DirectX::XMFLOAT4(1, 1, 1, 1); }
@@ -72,23 +104,20 @@ void App::Update(float /*dt*/) {
         m_renderMesh->dirty = true;
     }
 
-    // 3) While dragging: move the vertex in world space
+    // 3) While dragging: move the vertex on Z=0 plane
     if (m_input.lmbDown && m_isDragging && m_selectedVertex != -1) {
         float worldX = 0.0f, worldY = 0.0f;
-        ScreenToWorld(m_input.mouseX, m_input.mouseY, worldX, worldY);
-
-        DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
-        p.x = worldX;
-        p.y = worldY;
-        m_editMesh->SetVertex((VertexID)m_selectedVertex, p);
-
-        m_renderMesh->dirty = true;
+        if (ScreenToWorldOnZPlane(m_input.mouseX, m_input.mouseY, worldX, worldY)) {
+            DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+            p.x = worldX;
+            p.y = worldY;
+            m_editMesh->SetVertex((VertexID)m_selectedVertex, p);
+            m_renderMesh->dirty = true;
+        }
     }
 
-    // Always update the view/proj constants (cheap and keeps it simple)
     UpdateViewProj();
 
-    // 4) Upload once per frame if dirty
     if (m_renderMesh->dirty) {
         m_engine->UpdateVertexBuffer(m_editMesh, m_renderMesh, m_hwnd);
         m_renderMesh->dirty = false;
@@ -158,6 +187,38 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             handled = true;
             return 0;
         }
+        case WM_MBUTTONDOWN: {
+            m_input.mmbDown = true;
+            m_input.mmbPressed = true;
+            m_input.mouseX = GET_X_LPARAM(lParam);
+            m_input.mouseY = GET_Y_LPARAM(lParam);
+            SetCapture(hwnd);
+            handled = true;
+            return 0;
+        }
+        case WM_MBUTTONUP: {
+            m_input.mmbDown = false;
+            m_input.mmbReleased = true;
+            m_input.mouseX = GET_X_LPARAM(lParam);
+            m_input.mouseY = GET_Y_LPARAM(lParam);
+            ReleaseCapture();
+            handled = true;
+            return 0;
+        }
+        case WM_KEYDOWN: {
+            if (wParam < 256) {
+                bool wasDown = (lParam & (1 << 30)) != 0;
+                m_input.keys[wParam] = true;
+                if (!wasDown && (wParam == 'F')) { m_input.fPressed = true; }
+            }
+            handled = true;
+            return 0;
+        }
+        case WM_KEYUP: {
+            if (wParam < 256) { m_input.keys[wParam] = false; }
+            handled = true;
+            return 0;
+        }
     }
 
     return 0;
@@ -166,24 +227,18 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 int App::HitTestVertex(int mouseX, int mouseY) {
     if (!m_hwnd) return -1;
 
-    float worldX = 0.0f, worldY = 0.0f;
-    ScreenToWorld(mouseX, mouseY, worldX, worldY);
+    float wx0 = 0.0f, wy0 = 0.0f;
+    float wx1 = 0.0f, wy1 = 0.0f;
 
-    RECT rc;
-    GetClientRect(m_hwnd, &rc);
-    float width = float(rc.right - rc.left);
-    float height = float(rc.bottom - rc.top);
-    float aspect = (height > 0.0f) ? (width / height) : 1.0f;
+    if (!ScreenToWorldOnZPlane(mouseX, mouseY, wx0, wy0)) return -1;
+    if (!ScreenToWorldOnZPlane(mouseX + 10, mouseY, wx1, wy1)) return -1;
 
-    // ~10px radius in world units
-    const float px = 10.0f;
-    float ndcRadius = (2.0f * px) / width;
-    float hitRadius = ndcRadius * (aspect / m_zoom);
+    float hitRadius = sqrtf((wx1 - wx0) * (wx1 - wx0) + (wy1 - wy0) * (wy1 - wy0));
 
     for (int i = 0; i < 3; ++i) {
         DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)i);
-        float dx = worldX - p.x;
-        float dy = worldY - p.y;
+        float dx = wx0 - p.x;
+        float dy = wy0 - p.y;
         float d = sqrtf(dx * dx + dy * dy);
         if (d < hitRadius) return i;
     }
@@ -191,54 +246,30 @@ int App::HitTestVertex(int mouseX, int mouseY) {
     return -1;
 }
 
-void App::ScreenToNDC(int screenX, int screenY, float& ndcX, float& ndcY) {
-    if (!m_hwnd) { ndcX = 0.0f; ndcY = 0.0f; return; }
+bool App::ScreenToWorldOnZPlane(int screenX, int screenY, float& worldX, float& worldY) {
+    DirectX::XMFLOAT3 ro, rd;
+    m_camera.BuildRayFromScreen(float(screenX), float(screenY), ro, rd);
 
-    RECT rc;
-    GetClientRect(m_hwnd, &rc);
+    // Intersect with plane Z=0: ro.z + t*rd.z = 0
+    if (fabsf(rd.z) < 1e-6f) return false;
+    float t = -ro.z / rd.z;
+    if (t < 0.0f) return false;
 
-    float width = float(rc.right - rc.left);
-    float height = float(rc.bottom - rc.top);
-
-    ndcX = (2.0f * screenX / width) - 1.0f;
-    ndcY = 1.0f - (2.0f * screenY / height);
-}
-
-void App::ScreenToWorld(int screenX, int screenY, float& worldX, float& worldY) {
-    if (!m_hwnd) { worldX = 0.0f; worldY = 0.0f; return; }
-
-    RECT rc;
-    GetClientRect(m_hwnd, &rc);
-
-    float width = float(rc.right - rc.left);
-    float height = float(rc.bottom - rc.top);
-    float aspect = (height > 0.0f) ? (width / height) : 1.0f;
-
-    float ndcX = (2.0f * screenX / width) - 1.0f;
-    float ndcY = 1.0f - (2.0f * screenY / height);
-
-    worldX = (ndcX * (aspect / m_zoom)) + m_panX;
-    worldY = (ndcY * (1.0f / m_zoom)) + m_panY;
+    worldX = ro.x + rd.x * t;
+    worldY = ro.y + rd.y * t;
+    return true;
 }
 
 void App::UpdateViewProj() {
-    if (!m_engine || !m_hwnd) return;
+    m_camera.UpdateMatrices();
+    m_engine->SetViewProj(m_camera.ViewProj());
+}
 
-    RECT rc;
-    GetClientRect(m_hwnd, &rc);
-
-    float width = float(rc.right - rc.left);
-    float height = float(rc.bottom - rc.top);
-    float aspect = (height > 0.0f) ? (width / height) : 1.0f;
-
-    float sx = m_zoom / aspect;
-    float sy = m_zoom;
-
-    DirectX::XMFLOAT4X4 vp;
-    vp._11 = sx;  vp._12 = 0;   vp._13 = 0; vp._14 = 0;
-    vp._21 = 0;   vp._22 = sy;  vp._23 = 0; vp._24 = 0;
-    vp._31 = 0;   vp._32 = 0;   vp._33 = 1; vp._34 = 0;
-    vp._41 = -m_panX * sx; vp._42 = -m_panY * sy; vp._43 = 0; vp._44 = 1;
-
-    m_engine->SetViewProj(vp);
+void App::FocusCamera() {
+    DirectX::XMFLOAT3 pts[3] = {
+        m_editMesh->GetVertex(0),
+        m_editMesh->GetVertex(1),
+        m_editMesh->GetVertex(2),
+    };
+    m_camera.FocusOnPoints(pts, 3);
 }

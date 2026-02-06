@@ -69,10 +69,10 @@ void App::Update(float dt) {
         float f = 0.0f;
         float r = 0.0f;
 
-        if (m_input.keys['W']) f += 1.0f;
-        if (m_input.keys['S']) f -= 1.0f;
-        if (m_input.keys['D']) r += 1.0f;
-        if (m_input.keys['A']) r -= 1.0f;
+        if (GetAsyncKeyState('W') & 0x8000) f += 1.0f;
+        if (GetAsyncKeyState('S') & 0x8000) f -= 1.0f;
+        if (GetAsyncKeyState('D') & 0x8000) r += 1.0f;
+        if (GetAsyncKeyState('A') & 0x8000) r -= 1.0f;
 
         if (f != 0.0f || r != 0.0f) {
             float step = m_camera.moveSpeed * dt;

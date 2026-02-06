@@ -22,7 +22,7 @@ void EditorCamera::AddYawPitch(float yawDelta, float pitchDelta) {
     m_pitch += pitchDelta;
 
     // Prevent flip.
-    const float limit = XM_PIDIV2 - 0.01f;
+    const float limit = DirectX::XM_PIDIV2 - 0.001f;
     m_pitch = Clamp(m_pitch, -limit, limit);
 }
 
@@ -56,7 +56,9 @@ void EditorCamera::Pan(float dxPixels, float dyPixels) {
     XMVECTOR rightV = XMVector3TransformNormal(XMVectorSet(1, 0, 0, 0), rot);
     XMVECTOR upV = XMVectorSet(0, 1, 0, 0);
 
-    float scale = panSpeed;
+    float distance = std::max(1.0f, fabsf(m_position.z));
+    float scale = panSpeed * distance;
+
     XMVECTOR delta = XMVectorScale(rightV, -dxPixels * scale);
     delta = XMVectorAdd(delta, XMVectorScale(upV, dyPixels * scale));
 

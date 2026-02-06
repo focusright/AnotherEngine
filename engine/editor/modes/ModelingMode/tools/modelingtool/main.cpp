@@ -36,7 +36,8 @@ UINT64 g_fenceValue;
 HANDLE g_fenceEvent;
 GraphicsDevice g_gfx;
 Engine g_engine;
-App g_app;
+EditorCamera g_editorCamera;
+App g_app(g_editorCamera);
 
 struct InputState {
     int mouseX = 0;
@@ -66,9 +67,12 @@ void CreatePipelineState();
 void CreateVertexBuffer();
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    g_app.Ctx().camera = &g_editorCamera;
+    g_editorCamera.SetLens(DirectX::XM_PIDIV4, 0.1f, 1000.0f);
+
     InitializeWindow(hInstance);
     g_app.SetWindow(g_hwnd);
-    
+
     InitializeDirect3D();
     CreatePipelineState();
     CreateVertexBuffer();

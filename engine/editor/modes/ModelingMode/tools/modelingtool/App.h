@@ -4,15 +4,19 @@
 #include <windowsx.h>
 #include "Engine.h"
 #include "EditorCamera.h"
+#include "EditorContext.h"
 
 struct EditableMesh;
 struct RenderMesh;
 
 class App {
 public:
+    App(EditorCamera& camera);
+
+    EditorContext& Ctx() { return m_ctx; }
     void SetEngine(Engine* engine) { m_engine = engine; }
     void SetMeshes(EditableMesh* editMesh, RenderMesh* renderMesh) { m_editMesh = editMesh; m_renderMesh = renderMesh; }
-    void SetWindow(HWND hwnd) { m_hwnd = hwnd; }
+    void SetWindow(HWND hwnd) { m_hwnd = hwnd; m_ctx.hwnd = hwnd; }
 
     void BeginFrameInput();
     void Update(float dt);
@@ -60,9 +64,11 @@ private:
     EditorCamera m_camera;
     POINT m_lastCameraMouse = { 0, 0 };
 
+    EditorContext m_ctx;
+
     int HitTestVertex(int mouseX, int mouseY);
     bool ScreenToWorldOnZPlane(int screenX, int screenY, float& worldX, float& worldY);
     void UpdateViewProj();
     void FocusCamera();
-
+    EditorCamera* Cam() { return m_ctx.camera; }
 };

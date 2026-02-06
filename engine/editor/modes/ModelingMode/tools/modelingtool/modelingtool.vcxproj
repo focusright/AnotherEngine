@@ -90,6 +90,7 @@
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="EditableMesh.h" />
     <ClInclude Include="EditorCamera.h" />
+    <ClInclude Include="EditorContext.h" />
     <ClInclude Include="Engine.h" />
     <ClInclude Include="GraphicsDevice.h" />
     <ClInclude Include="RenderMesh.h" />

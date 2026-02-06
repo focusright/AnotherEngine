@@ -5,6 +5,8 @@
 
 using namespace DirectX;
 
+App::App(EditorCamera& camera) : m_camera(camera) {}
+
 void App::BeginFrameInput() {
     m_input.lmbPressed = false;
     m_input.lmbReleased = false;
@@ -17,7 +19,10 @@ void App::BeginFrameInput() {
 }
 
 void App::Update(float dt) {
-    if (!m_editMesh || !m_renderMesh || !m_engine) return;
+    if (!m_engine || !m_editMesh || !m_renderMesh) return;
+
+    EditorCamera* cam = m_ctx.camera;
+    if (!cam) return;
 
     if (!m_colorsInit) {
         for (int i = 0; i < 3; ++i) { m_baseColors[i] = m_renderMesh->drawVertices[i].color; }

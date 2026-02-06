@@ -153,17 +153,6 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             handled = true;
             return 0;
         }
-        case WM_MOUSEMOVE: {
-            m_input.mouseX = GET_X_LPARAM(lParam);
-            m_input.mouseY = GET_Y_LPARAM(lParam);
-            handled = true;
-            return 0;
-        }
-        case WM_SETCURSOR: {
-            SetCursor(LoadCursor(nullptr, IDC_ARROW));
-            handled = true;
-            return TRUE;
-        }
         case WM_RBUTTONDOWN: {
             m_input.rmbDown = true;
             m_input.rmbPressed = true;
@@ -179,11 +168,6 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             m_input.mouseX = GET_X_LPARAM(lParam);
             m_input.mouseY = GET_Y_LPARAM(lParam);
             ReleaseCapture();
-            handled = true;
-            return 0;
-        }
-        case WM_MOUSEWHEEL: {
-            m_input.wheelDelta += GET_WHEEL_DELTA_WPARAM(wParam);
             handled = true;
             return 0;
         }
@@ -205,6 +189,22 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             handled = true;
             return 0;
         }
+        case WM_MOUSEWHEEL: {
+            m_input.wheelDelta += GET_WHEEL_DELTA_WPARAM(wParam);
+            handled = true;
+            return 0;
+        }
+        case WM_MOUSEMOVE: {
+            m_input.mouseX = GET_X_LPARAM(lParam);
+            m_input.mouseY = GET_Y_LPARAM(lParam);
+            handled = true;
+            return 0;
+        }
+        case WM_SETCURSOR: {
+            SetCursor(LoadCursor(nullptr, IDC_ARROW));
+            handled = true;
+            return TRUE;
+        }
         case WM_KEYDOWN: {
             if (wParam == VK_ESCAPE) { handled = false; break; } // let main.cpp handle quit
             if (wParam < 256) {
@@ -216,6 +216,7 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             return 0;
         }
         case WM_KEYUP: {
+            if (wParam == VK_ESCAPE) { handled = false; break; }
             if (wParam < 256) { m_input.keys[wParam] = false; }
             handled = true;
             return 0;

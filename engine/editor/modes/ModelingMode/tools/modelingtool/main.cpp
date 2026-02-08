@@ -227,10 +227,9 @@ void InitializeDirect3D() {
 }
 
 void CreatePipelineState() {
-    // Create root signature (1 root param: 16 32-bit constants for a 4x4 matrix at b0)
-    CD3DX12_ROOT_PARAMETER rootParams[1];
-    rootParams[0].InitAsConstants(16, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-
+    CD3DX12_ROOT_PARAMETER rootParams[2]; // Create root signature
+    rootParams[0].InitAsConstants(16, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX); // Root param 0: 16 32-bit constants for a 4x4 matrix at b0 (vertex shader)
+    rootParams[1].InitAsConstants(4, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);   // Root param 1: 4  32-bit constants for a float4 tint at b1 (pixel shader)
     CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
     rootSignatureDesc.Init(_countof(rootParams), rootParams, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -268,17 +267,21 @@ void CreatePipelineState() {
         }
     )";
 
-
     const char* pixelShaderSource = R"(
+        cbuffer TintCB : register(b1) {
+            float4 uTint;
+        };
+
         struct PSInput {
             float4 position : SV_POSITION;
             float4 color : COLOR;
         };
 
         float4 PSMain(PSInput input) : SV_TARGET {
-            return input.color;
+            return input.color * uTint;
         }
     )";
+
 
     if (FAILED(D3DCompile(vertexShaderSource, strlen(vertexShaderSource), nullptr, nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, &error))) {
         if (error) {

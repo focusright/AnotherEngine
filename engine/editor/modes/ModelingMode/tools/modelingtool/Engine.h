@@ -33,6 +33,7 @@ public:
     // Simple scene support (multiple objects drawn with different world transforms).
     void SetObjectCount(uint32_t count);
     void SetObjectWorld(uint32_t index, const DirectX::XMFLOAT4X4& world);
+    void SetSelectedObject(uint32_t index) { m_selectedObject = index; }
 
 private:
     GraphicsDevice* m_gfx = nullptr;
@@ -55,4 +56,6 @@ private:
     static const uint32_t kMaxObjects = 16;
     uint32_t m_objectCount = 1;
     DirectX::XMFLOAT4X4 m_world[kMaxObjects] = {};
+
+    uint32_t m_selectedObject = 0;
 };

@@ -163,6 +163,8 @@ void App::Update(float dt) {
         m_engine->SetObjectWorld(i, world);
     }
 
+    m_engine->SetSelectedObject(m_activeObject);
+
     if (m_renderMesh->dirty) {
         m_engine->UpdateVertexBuffer(m_editMesh, m_renderMesh, m_hwnd);
         m_renderMesh->dirty = false;

@@ -25,6 +25,18 @@ public:
 
     LRESULT HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bool& handled);
 
+    uint32_t ObjectCount() const { return m_objectCount; }
+    uint32_t ActiveObject() const { return m_activeObject; }
+
+    void SetActiveObject(uint32_t index) {
+        if (index < m_objectCount)
+            m_activeObject = index;
+    }
+
+    bool AddObject(const DirectX::XMFLOAT3& pos);
+    bool DuplicateActiveObject();
+    bool DeleteActiveObject();
+
 private:
     struct InputState {
         int mouseX = 0;
@@ -67,9 +79,10 @@ private:
 
     EditorContext m_ctx;
 
-    static const uint32_t kObjectCount = 2;
+    static const uint32_t kMaxObjects = 16;
+    uint32_t m_objectCount = 2;
     uint32_t m_activeObject = 0;
-    DirectX::XMFLOAT3 m_objectPos[kObjectCount] = {};
+    DirectX::XMFLOAT3 m_objectPos[kMaxObjects] = {};
 
     int HitTestVertex(int mouseX, int mouseY);
     bool ScreenToWorldOnZPlane(int screenX, int screenY, float& worldX, float& worldY);

@@ -7,6 +7,10 @@ using namespace DirectX;
 
 App::App(EditorCamera& camera) : m_camera(camera) {
     m_ctx.camera = &m_camera;
+
+    // Two starter objects so the scene can be "interesting" immediately.
+    m_objectPos[0] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    m_objectPos[1] = DirectX::XMFLOAT3(2.0f, 0.0f, 0.0f);
 }
 
 void App::BeginFrameInput() {
@@ -91,6 +95,25 @@ void App::Update(float dt) {
     if (m_input.fPressed && !m_isDragging) {
         FocusCamera();
     }
+
+    // Object move (when not in RMB-fly mode).
+    // Layer note: this is "app/input"... no D3D12 layer yet; we just update transforms.
+    if (!m_input.rmbDown && !m_isDragging) {
+        float dx = 0.0f;
+        float dy = 0.0f;
+
+        if (GetAsyncKeyState(VK_LEFT)  & 0x8000) dx -= 1.0f;
+        if (GetAsyncKeyState(VK_RIGHT) & 0x8000) dx += 1.0f;
+        if (GetAsyncKeyState(VK_UP)    & 0x8000) dy += 1.0f;
+        if (GetAsyncKeyState(VK_DOWN)  & 0x8000) dy -= 1.0f;
+
+        if (dx != 0.0f || dy != 0.0f) {
+            float step = 2.0f * dt;
+            m_objectPos[m_activeObject].x += dx * step;
+            m_objectPos[m_activeObject].y += dy * step;
+        }
+    }
+
 #if 0
     // 1) On press: select a vertex
     if (m_input.lmbPressed) {
@@ -125,6 +148,16 @@ void App::Update(float dt) {
 #endif
 
     UpdateViewProj();
+
+    // Send world transforms to the engine.
+    // D3D12 layer note: fixed-function/program... we eventually feed these as root constants per draw.
+    for (uint32_t i = 0; i < kObjectCount; ++i) {
+        DirectX::XMMATRIX W = DirectX::XMMatrixTranslation(m_objectPos[i].x, m_objectPos[i].y, m_objectPos[i].z);
+        DirectX::XMFLOAT4X4 world;
+        DirectX::XMStoreFloat4x4(&world, W);
+        m_engine->SetObjectWorld(i, world);
+    }
+
 
     if (m_renderMesh->dirty) {
         m_engine->UpdateVertexBuffer(m_editMesh, m_renderMesh, m_hwnd);
@@ -219,6 +252,10 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
                 bool wasDown = (lParam & (1 << 30)) != 0;
                 m_input.keys[wParam] = true;
                 if (!wasDown && (wParam == 'F')) { m_input.fPressed = true; }
+
+                // Object selection.
+                if (!wasDown && wParam == '1') { m_activeObject = 0; }
+                if (!wasDown && wParam == '2') { m_activeObject = 1; }
             }
             handled = true;
             return 0;

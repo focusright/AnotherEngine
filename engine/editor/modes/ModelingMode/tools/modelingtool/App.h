@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <windowsx.h>
+#include <DirectXMath.h>
 #include "Engine.h"
 #include "EditorCamera.h"
 #include "EditorContext.h"
@@ -65,6 +66,10 @@ private:
     POINT m_lastCameraMouse = { 0, 0 };
 
     EditorContext m_ctx;
+
+    static const uint32_t kObjectCount = 2;
+    uint32_t m_activeObject = 0;
+    DirectX::XMFLOAT3 m_objectPos[kObjectCount] = {};
 
     int HitTestVertex(int mouseX, int mouseY);
     bool ScreenToWorldOnZPlane(int screenX, int screenY, float& worldX, float& worldY);

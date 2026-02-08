@@ -74,6 +74,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
     g_editorCamera.SetLens(DirectX::XM_PIDIV4, 0.1f, 1000.0f);
     g_engine.SetGraphicsDevice(&g_gfx);
     g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), WINDOW_WIDTH, WINDOW_HEIGHT);
+    g_engine.SetObjectCount(2);
     g_app.SetWindow(g_hwnd);
     g_app.SetEngine(&g_engine);
     g_app.SetMeshes(&g_editMesh, &g_renderMesh);

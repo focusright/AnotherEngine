@@ -45,7 +45,6 @@ void Engine::PopulateCommandList() {
     m_commandList->Reset(m_commandAllocator, m_pipelineState);
 
     m_commandList->SetGraphicsRootSignature(m_rootSignature);
-    m_commandList->SetGraphicsRoot32BitConstants(0, 16, &m_viewProj, 0);
 
     D3D12_VIEWPORT viewport{
         0.0f,
@@ -83,7 +82,22 @@ void Engine::PopulateCommandList() {
         sizeof(Vertex)
     };
     m_commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
-    m_commandList->DrawInstanced(RenderMesh::kDrawVertexCount, 1, 0, 0);
+
+    // Draw each object with its own world transform.
+    // D3D12 layer note: this is fixed-function pipeline setup + programmable (root constants) per draw.
+    uint32_t count = (m_objectCount == 0) ? 1 : m_objectCount;
+    if (count > kMaxObjects) count = kMaxObjects;
+
+    for (uint32_t i = 0; i < count; ++i) {
+        DirectX::XMMATRIX W = DirectX::XMLoadFloat4x4(&m_world[i]);
+        DirectX::XMMATRIX VP = DirectX::XMLoadFloat4x4(&m_viewProj);
+        DirectX::XMMATRIX WVP = DirectX::XMMatrixMultiply(W, VP);
+
+        DirectX::XMFLOAT4X4 wvp;
+        DirectX::XMStoreFloat4x4(&wvp, WVP);
+        m_commandList->SetGraphicsRoot32BitConstants(0, 16, &wvp, 0);
+        m_commandList->DrawInstanced(RenderMesh::kDrawVertexCount, 1, 0, 0);
+    }
 
     barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_gfx->CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
     m_commandList->ResourceBarrier(1, &barrier);
@@ -125,4 +139,20 @@ void Engine::RenderFrame() {
 
 void Engine::SetViewProj(const DirectX::XMFLOAT4X4& viewProj) {
     m_viewProj = viewProj;
+}
+
+void Engine::SetObjectCount(uint32_t count) {
+    m_objectCount = (count == 0) ? 1 : count;
+
+    // Default worlds to identity so uninitialized objects don't explode.
+    uint32_t n = m_objectCount;
+    if (n > kMaxObjects) n = kMaxObjects;
+    for (uint32_t i = 0; i < n; ++i) {
+        DirectX::XMStoreFloat4x4(&m_world[i], DirectX::XMMatrixIdentity());
+    }
+}
+
+void Engine::SetObjectWorld(uint32_t index, const DirectX::XMFLOAT4X4& world) {
+    if (index >= kMaxObjects) return;
+    m_world[index] = world;
 }

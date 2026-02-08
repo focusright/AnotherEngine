@@ -20,8 +20,9 @@ void Engine::SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12Gr
 void Engine::UpdateVertexBuffer(const EditableMesh* editMesh, RenderMesh* renderMesh, HWND hwnd) {
     if (!m_vertexBuffer) { return; }
 
-    for (uint32_t i = 0; i < 3; ++i) {
-        renderMesh->drawVertices[i].position = editMesh->GetVertex(i);
+    for (uint32_t i = 0; i < RenderMesh::kDrawVertexCount; ++i) {
+        uint32_t ev = renderMesh->drawToEdit[i];
+        renderMesh->drawVertices[i].position = editMesh->GetVertex(ev);
     }
 
     UINT8* pVertexDataBegin = nullptr;
@@ -66,20 +67,23 @@ void Engine::PopulateCommandList() {
     CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_gfx->CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
     m_commandList->ResourceBarrier(1, &barrier);
 
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_gfx->CurrentRTV();
-    m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
-
     const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_gfx->CurrentRTV();
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_gfx->DSV();
+    m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
     m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView{
         m_vertexBuffer->GetGPUVirtualAddress(),
-        sizeof(Vertex) * 3,
+        sizeof(Vertex) * RenderMesh::kDrawVertexCount,
         sizeof(Vertex)
     };
     m_commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
-    m_commandList->DrawInstanced(3, 1, 0, 0);
+    m_commandList->DrawInstanced(RenderMesh::kDrawVertexCount, 1, 0, 0);
 
     barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_gfx->CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
     m_commandList->ResourceBarrier(1, &barrier);

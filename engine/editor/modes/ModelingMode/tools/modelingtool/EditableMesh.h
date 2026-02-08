@@ -8,8 +8,8 @@ using VertexID = uint32_t;
 
 // Authoritative mesh data for editing (CPU-side truth)
 struct EditableMesh {
-    // For now: fixed triangle (we will generalize later)
-    XMFLOAT3 positions[3];
+    static constexpr uint32_t kVertexCount = 4; // tetrahedron vertices
+    XMFLOAT3 positions[kVertexCount];
 
     void SetVertex(VertexID v, const XMFLOAT3& p) {
         positions[v] = p;

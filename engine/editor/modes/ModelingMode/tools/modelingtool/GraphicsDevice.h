@@ -29,7 +29,12 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE CurrentRTV() const;
     ID3D12Resource* CurrentBackBuffer() const;
 
-    private:
+    bool CreateDSV(ID3D12Device* device, uint32_t width, uint32_t height);
+    D3D12_CPU_DESCRIPTOR_HANDLE DSV() const;
+    ID3D12Resource* DepthStencil() const { return m_depthStencil.Get(); }
+
+
+private:
     Microsoft::WRL::ComPtr<ID3D12Device> m_device;
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_queue;
     Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
@@ -39,4 +44,7 @@ public:
     uint32_t m_rtvDescriptorSize = 0;
 
     uint32_t m_frameIndex = 0;
+
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
+    Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencil;
 };

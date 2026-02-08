@@ -9,8 +9,13 @@ struct Vertex {
     DirectX::XMFLOAT4 color;
 };
 
-// GPU-side cache state derived from EditableMesh
 struct RenderMesh {
+    static constexpr uint32_t kDrawVertexCount = 12; // 4 faces * 3 verts
+
     bool dirty = true;
-    Vertex drawVertices[3] = {};
+
+    // Each draw vertex references an EditableMesh vertex index (0..3 for tetra)
+    uint32_t drawToEdit[kDrawVertexCount] = {};
+
+    Vertex drawVertices[kDrawVertexCount] = {};
 };

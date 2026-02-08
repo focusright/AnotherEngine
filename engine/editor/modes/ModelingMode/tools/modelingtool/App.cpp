@@ -91,7 +91,7 @@ void App::Update(float dt) {
     if (m_input.fPressed && !m_isDragging) {
         FocusCamera();
     }
-
+#if 0
     // 1) On press: select a vertex
     if (m_input.lmbPressed) {
         m_selectedVertex = HitTestVertex(m_input.mouseX, m_input.mouseY);
@@ -122,6 +122,7 @@ void App::Update(float dt) {
             m_renderMesh->dirty = true;
         }
     }
+#endif
 
     UpdateViewProj();
 

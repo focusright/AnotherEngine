@@ -14,7 +14,7 @@ App::App(EditorCamera& camera) : m_camera(camera) {
     {
         DirectX::XMFLOAT3 pos = m_camera.Position();
         DirectX::XMFLOAT3 f = m_camera.Forward();
-        m_viewPivot = DirectX::XMFLOAT3(pos.x + f.x * m_orbitDistance, pos.y + f.y * m_orbitDistance, pos.z + f.z * m_orbitDistance);
+        //m_viewPivot = DirectX::XMFLOAT3(pos.x + f.x * m_orbitDistance, pos.y + f.y * m_orbitDistance, pos.z + f.z * m_orbitDistance);
     }
 
     m_objectCount = 2;
@@ -55,6 +55,16 @@ void App::Update(float dt) {
     // Mouse-look (RMB) - only if not dragging a vertex.
     if (m_input.rmbPressed) {
         m_lastCameraMouse = { m_input.mouseX, m_input.mouseY };
+
+        // In RMB-fly look mode, treat the view center as "straight ahead at orbitDistance".
+        // This keeps orbit behavior predictable after you look around in fly mode.
+        {
+            DirectX::XMFLOAT3 pos = m_camera.Position();
+            DirectX::XMFLOAT3 fwd = m_camera.Forward();
+            m_orbitDistance = (std::max)(0.25f, m_orbitDistance);
+            m_viewPivot = DirectX::XMFLOAT3(pos.x + fwd.x * m_orbitDistance, pos.y + fwd.y * m_orbitDistance, pos.z + fwd.z * m_orbitDistance);
+        }
+
     }
     if (m_input.rmbDown && !m_isDragging) {
         int dx = m_input.mouseX - m_lastCameraMouse.x;
@@ -72,13 +82,13 @@ void App::Update(float dt) {
     if (m_input.mmbPressed) {
         m_lastCameraMouse = { m_input.mouseX, m_input.mouseY };
 
-        // General Blender-like orbit-around-view behavior:
-        // pivot is the center of the view at the current orbit distance (no geometry hit test).
+        // Blender-like: orbit center does NOT depend on cursor position.
+        // We lock onto the current persistent view center (m_viewPivot) and just recompute distance.
         DirectX::XMFLOAT3 pos = m_camera.Position();
-        DirectX::XMFLOAT3 fwd = m_camera.Forward();
-
-        m_orbitDistance = (std::max)(0.25f, m_orbitDistance);
-        m_viewPivot = DirectX::XMFLOAT3(pos.x + fwd.x * m_orbitDistance, pos.y + fwd.y * m_orbitDistance, pos.z + fwd.z * m_orbitDistance);
+        float dxp = pos.x - m_viewPivot.x;
+        float dyp = pos.y - m_viewPivot.y;
+        float dzp = pos.z - m_viewPivot.z;
+        m_orbitDistance = (std::max)(0.25f, std::sqrt(dxp * dxp + dyp * dyp + dzp * dzp));
     }
     if (m_input.mmbDown && !m_isDragging) {
         int dx = m_input.mouseX - m_lastCameraMouse.x;
@@ -150,6 +160,14 @@ void App::Update(float dt) {
             float step = m_camera.moveSpeed * dt;
             m_camera.MoveLocal(f * step, r * step, 0.0f);
         }
+    
+        // Update view center pivot in fly move mode (see RMB look block comment).
+        {
+            DirectX::XMFLOAT3 pos = m_camera.Position();
+            DirectX::XMFLOAT3 fwd = m_camera.Forward();
+            m_orbitDistance = (std::max)(0.25f, m_orbitDistance);
+            m_viewPivot = DirectX::XMFLOAT3(pos.x + fwd.x * m_orbitDistance, pos.y + fwd.y * m_orbitDistance, pos.z + fwd.z * m_orbitDistance);
+        }
     }
 
     // Focus.
@@ -157,17 +175,6 @@ void App::Update(float dt) {
         FocusCamera();
     }
 
-    // Keep the orbit pivot at the center of the view when not actively orbiting/panning.
-    // This matches Blender's "orbit around view center" feel and avoids hidden selection pivots.
-    // // Keep the orbit pivot dynamically centered on the view (no geometry constraint).
-    // pivot = cameraPos + forward * orbitDistance
-    if (!m_input.mmbDown && !m_isDragging) {
-        DirectX::XMFLOAT3 pos = m_camera.Position();
-        DirectX::XMFLOAT3 fwd = m_camera.Forward();
-
-        m_orbitDistance = (std::max)(0.25f, m_orbitDistance);
-        m_viewPivot = DirectX::XMFLOAT3(pos.x + fwd.x * m_orbitDistance, pos.y + fwd.y * m_orbitDistance, pos.z + fwd.z * m_orbitDistance);
-    }
 
 
     // Object move (when not in RMB-fly mode).

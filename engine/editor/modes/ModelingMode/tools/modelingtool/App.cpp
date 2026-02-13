@@ -10,13 +10,6 @@ using namespace DirectX;
 App::App(EditorCamera& camera) : m_camera(camera) {
     m_ctx.camera = &m_camera;
 
-    // View pivot starts in front of the camera so orbit has a stable center.
-    {
-        DirectX::XMFLOAT3 pos = m_camera.Position();
-        DirectX::XMFLOAT3 f = m_camera.Forward();
-        //m_viewPivot = DirectX::XMFLOAT3(pos.x + f.x * m_orbitDistance, pos.y + f.y * m_orbitDistance, pos.z + f.z * m_orbitDistance);
-    }
-
     m_objectCount = 2;
     m_objectPos[0] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_objectPos[1] = DirectX::XMFLOAT3(2.0f, 0.0f, 0.0f);

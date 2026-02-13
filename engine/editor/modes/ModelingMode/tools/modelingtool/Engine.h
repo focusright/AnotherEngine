@@ -20,7 +20,7 @@ public:
     void SetGraphicsDevice(GraphicsDevice* gfx) { m_gfx = gfx; }
     GraphicsDevice* Gfx() const { return m_gfx; }
 
-    void SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12GraphicsCommandList* commandList, ID3D12RootSignature* rootSignature, ID3D12PipelineState* pipelineState, ID3D12Fence* fence, HANDLE fenceEvent, UINT64* fenceValue, ID3D12Resource* vertexBuffer, uint32_t width, uint32_t height);
+    void SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12GraphicsCommandList* commandList, ID3D12RootSignature* rootSignature, ID3D12PipelineState* pipelineStateTriangles, ID3D12PipelineState* pipelineStateLines, ID3D12Fence* fence, HANDLE fenceEvent, UINT64* fenceValue, ID3D12Resource* vertexBufferTetra, ID3D12Resource* vertexBufferGrid, uint32_t gridVertexCount, uint32_t width, uint32_t height);
     void UpdateVertexBuffer(const EditableMesh* editMesh, RenderMesh* renderMesh, HWND hwnd);
 
     void PopulateCommandList();
@@ -45,8 +45,11 @@ private:
     ID3D12CommandAllocator* m_commandAllocator = nullptr;
     ID3D12GraphicsCommandList* m_commandList = nullptr;
     ID3D12RootSignature* m_rootSignature = nullptr;
-    ID3D12PipelineState* m_pipelineState = nullptr;
-    ID3D12Resource* m_vertexBuffer = nullptr;
+    ID3D12PipelineState* m_pipelineStateTriangles = nullptr;
+    ID3D12PipelineState* m_pipelineStateLines = nullptr;
+    ID3D12Resource* m_vertexBufferTetra = nullptr;
+    ID3D12Resource* m_vertexBufferGrid = nullptr;
+    uint32_t m_gridVertexCount = 0;
 
     ID3D12Fence* m_fence = nullptr;
     HANDLE m_fenceEvent = nullptr;

@@ -4,21 +4,24 @@
 #include "EditableMesh.h"
 #include <DirectXMath.h>
 
-void Engine::SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12GraphicsCommandList* commandList, ID3D12RootSignature* rootSignature, ID3D12PipelineState* pipelineState, ID3D12Fence* fence, HANDLE fenceEvent, UINT64* fenceValue, ID3D12Resource* vertexBuffer, uint32_t width, uint32_t height) {
+void Engine::SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12GraphicsCommandList* commandList, ID3D12RootSignature* rootSignature, ID3D12PipelineState* pipelineStateTriangles, ID3D12PipelineState* pipelineStateLines, ID3D12Fence* fence, HANDLE fenceEvent, UINT64* fenceValue, ID3D12Resource* vertexBufferTetra, ID3D12Resource* vertexBufferGrid, uint32_t gridVertexCount, uint32_t width, uint32_t height) {
     m_commandAllocator = commandAllocator;
     m_commandList = commandList;
     m_rootSignature = rootSignature;
-    m_pipelineState = pipelineState;
+    m_pipelineStateTriangles = pipelineStateTriangles;
+    m_pipelineStateLines = pipelineStateLines;
     m_fence = fence;
     m_fenceEvent = fenceEvent;
     m_fenceValue = fenceValue;
-    m_vertexBuffer = vertexBuffer;
+    m_vertexBufferTetra = vertexBufferTetra;
+    m_vertexBufferGrid = vertexBufferGrid;
+    m_gridVertexCount = gridVertexCount;
     m_width = width;
     m_height = height;
 }
 
 void Engine::UpdateVertexBuffer(const EditableMesh* editMesh, RenderMesh* renderMesh, HWND hwnd) {
-    if (!m_vertexBuffer) { return; }
+    if (!m_vertexBufferTetra) { return; }
 
     for (uint32_t i = 0; i < RenderMesh::kDrawVertexCount; ++i) {
         uint32_t ev = renderMesh->drawToEdit[i];
@@ -28,7 +31,7 @@ void Engine::UpdateVertexBuffer(const EditableMesh* editMesh, RenderMesh* render
     UINT8* pVertexDataBegin = nullptr;
     D3D12_RANGE readRange = { 0, 0 };
 
-    HRESULT hr = m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
+    HRESULT hr = m_vertexBufferTetra->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
     if (FAILED(hr) || !pVertexDataBegin) {
         wchar_t buf[256];
         swprintf_s(buf, L"VertexBuffer Map failed. hr=0x%08X", (unsigned)hr);
@@ -37,12 +40,12 @@ void Engine::UpdateVertexBuffer(const EditableMesh* editMesh, RenderMesh* render
     }
 
     memcpy(pVertexDataBegin, renderMesh->drawVertices, sizeof(renderMesh->drawVertices));
-    m_vertexBuffer->Unmap(0, nullptr);
+    m_vertexBufferTetra->Unmap(0, nullptr);
 }
 
 void Engine::PopulateCommandList() {
     m_commandAllocator->Reset();
-    m_commandList->Reset(m_commandAllocator, m_pipelineState);
+    m_commandList->Reset(m_commandAllocator, m_pipelineStateTriangles);
 
     m_commandList->SetGraphicsRootSignature(m_rootSignature);
 
@@ -74,10 +77,38 @@ void Engine::PopulateCommandList() {
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
+    // Draw grid first (lines). This mimics Blender's startup grid and helps anchor scale.
+    // D3D12 layers: fixed-function pipeline state switch + new vertex buffer binding.
+    if (m_pipelineStateLines && m_vertexBufferGrid && m_gridVertexCount >= 2) {
+        m_commandList->SetPipelineState(m_pipelineStateLines);
+        m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+
+        D3D12_VERTEX_BUFFER_VIEW gridVBV{
+            m_vertexBufferGrid->GetGPUVirtualAddress(),
+            sizeof(Vertex) * m_gridVertexCount,
+            sizeof(Vertex)
+        };
+        m_commandList->IASetVertexBuffers(0, 1, &gridVBV);
+
+        // World = identity so WVP = VP.
+        DirectX::XMMATRIX VP = DirectX::XMLoadFloat4x4(&m_viewProj);
+        DirectX::XMFLOAT4X4 wvp;
+        DirectX::XMStoreFloat4x4(&wvp, VP);
+        m_commandList->SetGraphicsRoot32BitConstants(0, 16, &wvp, 0);
+
+        // Slightly dim gray; vertex colors already carry line emphasis.
+        DirectX::XMFLOAT4 tint = DirectX::XMFLOAT4(0.35f, 0.35f, 0.35f, 1.0f);
+        m_commandList->SetGraphicsRoot32BitConstants(1, 4, &tint, 0);
+
+        m_commandList->DrawInstanced(m_gridVertexCount, 1, 0, 0);
+    }
+
+    // Now draw the objects (triangles).
+    m_commandList->SetPipelineState(m_pipelineStateTriangles);
     m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView{
-        m_vertexBuffer->GetGPUVirtualAddress(),
+        m_vertexBufferTetra->GetGPUVirtualAddress(),
         sizeof(Vertex) * RenderMesh::kDrawVertexCount,
         sizeof(Vertex)
     };

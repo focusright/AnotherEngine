@@ -29,7 +29,10 @@ ComPtr<ID3D12CommandAllocator> g_commandAllocator;
 ComPtr<ID3D12GraphicsCommandList> g_commandList;
 ComPtr<ID3D12RootSignature> g_rootSignature;
 ComPtr<ID3D12PipelineState> g_pipelineState;
+ComPtr<ID3D12PipelineState> g_pipelineStateLine;
 ComPtr<ID3D12Resource> g_vertexBuffer;
+ComPtr<ID3D12Resource> g_vertexBufferGrid;
+uint32_t g_gridVertexCount = 0;
 ComPtr<ID3D12Fence> g_fence;
 UINT64 g_fenceValue;
 HANDLE g_fenceEvent;
@@ -64,16 +67,18 @@ void InitializeWindow(HINSTANCE hInstance);
 void InitializeDirect3D();
 void CreatePipelineState();
 void CreateVertexBuffer();
+void CreateGridVertexBuffer();
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int nCmdShow) {
     InitializeWindow(hInstance);
     InitializeDirect3D();
     CreatePipelineState();
     CreateVertexBuffer();
+    CreateGridVertexBuffer();
     
     g_editorCamera.SetLens(DirectX::XM_PIDIV4, 0.1f, 1000.0f);
     g_engine.SetGraphicsDevice(&g_gfx);
-    g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), WINDOW_WIDTH, WINDOW_HEIGHT);
+    g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_pipelineStateLine.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), g_vertexBufferGrid.Get(), g_gridVertexCount, WINDOW_WIDTH, WINDOW_HEIGHT);
     g_engine.SetObjectCount(2);
     g_app.SetWindow(g_hwnd);
     g_app.SetEngine(&g_engine);
@@ -325,6 +330,75 @@ void CreatePipelineState() {
     if (FAILED(g_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&g_pipelineState)))) {
         return;
     }
+
+    // Create a line PSO for drawing the editor grid.
+    // We reuse the same shaders and root signature, but switch topology type to LINE.
+    // Depth test stays on so the grid respects scene depth, but we disable depth writes
+    // to reduce z-fighting and avoid the grid occluding later geometry.
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC linePso = psoDesc;
+    linePso.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+    linePso.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+    linePso.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+    if (FAILED(g_device->CreateGraphicsPipelineState(&linePso, IID_PPV_ARGS(&g_pipelineStateLine)))) {
+        return;
+    }
+}
+
+void CreateGridVertexBuffer() {
+    // Create a simple Blender-like XZ grid at Y=0.
+    // 2*(2N+1) lines (N in each direction), each line has 2 vertices.
+    const int N = 20;
+    const float step = 1.0f;
+    const float halfSize = float(N) * step;
+
+    const uint32_t linesPerDir = uint32_t(2 * N + 1);
+    const uint32_t lineCount = linesPerDir * 2; // X-parallel + Z-parallel
+    g_gridVertexCount = lineCount * 2;
+
+    Vertex* verts = new Vertex[g_gridVertexCount];
+    uint32_t v = 0;
+
+    auto gray = XMFLOAT4(0.35f, 0.35f, 0.35f, 1.0f);
+    auto axisX = XMFLOAT4(0.85f, 0.15f, 0.15f, 1.0f);
+    auto axisZ = XMFLOAT4(0.15f, 0.35f, 0.85f, 1.0f);
+
+    // Slightly below Y=0 to reduce z-fighting with geometry sitting on the ground plane.
+    const float y = -0.1f;
+
+    for (int i = -N; i <= N; ++i) {
+        float k = float(i) * step;
+
+        // Lines parallel to X axis (varying Z)
+        XMFLOAT4 colX = (i == 0) ? axisX : gray;
+        verts[v++] = { XMFLOAT3(-halfSize, y, k), colX };
+        verts[v++] = { XMFLOAT3( halfSize, y, k), colX };
+
+        // Lines parallel to Z axis (varying X)
+        XMFLOAT4 colZ = (i == 0) ? axisZ : gray;
+        verts[v++] = { XMFLOAT3(k, y, -halfSize), colZ };
+        verts[v++] = { XMFLOAT3(k, y,  halfSize), colZ };
+    }
+
+    const UINT vbSize = sizeof(Vertex) * g_gridVertexCount;
+
+    CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
+    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(vbSize);
+    if (FAILED(g_device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&g_vertexBufferGrid)))) {
+        delete[] verts;
+        g_gridVertexCount = 0;
+        return;
+    }
+
+    UINT8* pData = nullptr;
+    D3D12_RANGE readRange = { 0, 0 };
+    if (FAILED(g_vertexBufferGrid->Map(0, &readRange, reinterpret_cast<void**>(&pData))) || !pData) {
+        delete[] verts;
+        g_gridVertexCount = 0;
+        return;
+    }
+    memcpy(pData, verts, vbSize);
+    g_vertexBufferGrid->Unmap(0, nullptr);
+    delete[] verts;
 }
 
 void CreateVertexBuffer() {

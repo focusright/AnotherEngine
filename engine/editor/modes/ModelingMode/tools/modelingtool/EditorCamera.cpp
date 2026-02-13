@@ -56,7 +56,8 @@ void EditorCamera::Pan(float dxPixels, float dyPixels) {
     XMVECTOR rightV = XMVector3TransformNormal(XMVectorSet(1, 0, 0, 0), rot);
     XMVECTOR upV = XMVectorSet(0, 1, 0, 0);
 
-    float distance = std::max(1.0f, fabsf(m_position.z));
+    // NOTE: Use (std::max)(...) to avoid Windows.h max macro collisions.
+    float distance = (std::max)(1.0f, fabsf(m_position.z));
     float scale = panSpeed * distance;
 
     XMVECTOR delta = XMVectorScale(rightV, -dxPixels * scale);
@@ -92,13 +93,13 @@ void EditorCamera::FocusOnPoints(const XMFLOAT3* points, int count) {
         float dx = points[i].x - c.x;
         float dy = points[i].y - c.y;
         float dz = points[i].z - c.z;
-        r = std::max(r, std::sqrt(dx * dx + dy * dy + dz * dz));
+        r = (std::max)(r, std::sqrt(dx * dx + dy * dy + dz * dz));
     }
-    r = std::max(r, 0.5f);
+    r = (std::max)(r, 0.5f);
 
     // Distance so object fits in view vertically.
     float dist = r / std::tan(m_fovY * 0.5f);
-    dist = std::max(dist, 1.0f);
+    dist = (std::max)(dist, 1.0f);
 
     XMMATRIX rot = XMMatrixRotationRollPitchYaw(m_pitch, m_yaw, 0.0f);
     XMVECTOR forwardV = XMVector3TransformNormal(XMVectorSet(0, 0, 1, 0), rot);
@@ -124,6 +125,22 @@ void EditorCamera::UpdateMatrices() {
     XMStoreFloat4x4(&m_view, view);
     XMStoreFloat4x4(&m_proj, proj);
     XMStoreFloat4x4(&m_viewProj, vp);
+}
+
+XMFLOAT3 EditorCamera::Forward() const {
+    XMMATRIX rot = XMMatrixRotationRollPitchYaw(m_pitch, m_yaw, 0.0f);
+    XMVECTOR forwardV = XMVector3TransformNormal(XMVectorSet(0, 0, 1, 0), rot);
+    XMFLOAT3 f;
+    XMStoreFloat3(&f, forwardV);
+    return f;
+}
+
+XMFLOAT3 EditorCamera::Right() const {
+    XMMATRIX rot = XMMatrixRotationRollPitchYaw(m_pitch, m_yaw, 0.0f);
+    XMVECTOR rightV = XMVector3TransformNormal(XMVectorSet(1, 0, 0, 0), rot);
+    XMFLOAT3 r;
+    XMStoreFloat3(&r, rightV);
+    return r;
 }
 
 void EditorCamera::BuildRayFromScreen(float screenX, float screenY, XMFLOAT3& outOrigin, XMFLOAT3& outDir) const {

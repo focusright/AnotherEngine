@@ -77,6 +77,9 @@ private:
     EditorCamera m_camera;
     POINT m_lastCameraMouse = { 0, 0 };
 
+    DirectX::XMFLOAT3 m_viewPivot = { 0.0f, 0.0f, 0.0f };
+    float m_orbitDistance = 10.0f;
+
     EditorContext m_ctx;
 
     static const uint32_t kMaxObjects = 16;

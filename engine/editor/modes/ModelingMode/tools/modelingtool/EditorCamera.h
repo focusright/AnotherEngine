@@ -20,6 +20,9 @@ public:
     void UpdateMatrices();
     const DirectX::XMFLOAT4X4& ViewProj() const { return m_viewProj; }
 
+    DirectX::XMFLOAT3 Forward() const;
+    DirectX::XMFLOAT3 Right() const;
+
     // Ray from screen pixel into world (for picking/dragging).
     void BuildRayFromScreen(float screenX, float screenY, DirectX::XMFLOAT3& outOrigin, DirectX::XMFLOAT3& outDir) const;
 

@@ -96,7 +96,13 @@ void Engine::PopulateCommandList() {
         DirectX::XMFLOAT4X4 wvp;
         DirectX::XMStoreFloat4x4(&wvp, WVP);
         m_commandList->SetGraphicsRoot32BitConstants(0, 16, &wvp, 0);
-        DirectX::XMFLOAT4 tint = (i == m_selectedObject) ? DirectX::XMFLOAT4(1.0f, 0.35f, 0.35f, 1.0f) : DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        DirectX::XMFLOAT4 tint = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        if (i == m_debugPivotIndex) {
+            tint = DirectX::XMFLOAT4(0.25f, 1.0f, 1.0f, 1.0f);
+        }
+        if (i == m_selectedObject) {
+            tint = DirectX::XMFLOAT4(1.0f, 0.35f, 0.35f, 1.0f);
+        }
         m_commandList->SetGraphicsRoot32BitConstants(1, 4, &tint, 0);
 
         m_commandList->DrawInstanced(RenderMesh::kDrawVertexCount, 1, 0, 0);

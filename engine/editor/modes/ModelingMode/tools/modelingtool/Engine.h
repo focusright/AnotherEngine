@@ -35,6 +35,10 @@ public:
     void SetObjectWorld(uint32_t index, const DirectX::XMFLOAT4X4& world);
     void SetSelectedObject(uint32_t index) { m_selectedObject = index; }
 
+    // Debug helpers (editor-only visualization).
+    // If set to a valid index, that object will be tinted cyan to visualize a pivot/marker.
+    void SetDebugPivotIndex(uint32_t index) { m_debugPivotIndex = index; }
+
 private:
     GraphicsDevice* m_gfx = nullptr;
 
@@ -58,4 +62,6 @@ private:
     DirectX::XMFLOAT4X4 m_world[kMaxObjects] = {};
 
     uint32_t m_selectedObject = 0;
+
+    uint32_t m_debugPivotIndex = 0xFFFFFFFFu;
 };

@@ -2,20 +2,11 @@
 #include "EditableMesh.h"
 #include "RenderMesh.h"
 #include <DirectXMath.h>
-#include <algorithm>
-#include <cmath>
 
 using namespace DirectX;
 
 App::App(EditorCamera& camera) : m_camera(camera) {
     m_ctx.camera = &m_camera;
-
-    // View pivot starts in front of the camera so orbit has a stable center.
-    {
-        DirectX::XMFLOAT3 pos = m_camera.Position();
-        DirectX::XMFLOAT3 f = m_camera.Forward();
-        m_viewPivot = DirectX::XMFLOAT3(pos.x + f.x * m_orbitDistance, pos.y + f.y * m_orbitDistance, pos.z + f.z * m_orbitDistance);
-    }
 
     m_objectCount = 2;
     m_objectPos[0] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
@@ -65,84 +56,23 @@ void App::Update(float dt) {
         m_lastCameraMouse = { m_input.mouseX, m_input.mouseY };
     }
 
-    // Orbit/Pan (MMB):
-    //   MMB drag           = orbit around view center
-    //   Shift + MMB drag   = pan (moves camera and pivot together)
-    // This is app/input + camera math (no D3D12 layer).
+    // Pan (MMB) - per your requirement.
     if (m_input.mmbPressed) {
         m_lastCameraMouse = { m_input.mouseX, m_input.mouseY };
-
-        // Blender-like behavior: when you start orbiting, lock the pivot to whatever is under the
-        // center of the view (for now: intersection of the center ray with Z=0).
-        int cx = int(width * 0.5f);
-        int cy = int(height * 0.5f);
-
-        float px = 0.0f, py = 0.0f;
-        if (ScreenToWorldOnZPlane(cx, cy, px, py)) {
-            m_viewPivot = DirectX::XMFLOAT3(px, py, 0.0f);
-        }
-
-        DirectX::XMFLOAT3 pos = m_camera.Position();
-        float dxp = pos.x - m_viewPivot.x;
-        float dyp = pos.y - m_viewPivot.y;
-        float dzp = pos.z - m_viewPivot.z;
-        // NOTE: Use (std::max)(...) to avoid Windows.h max macro collisions.
-        m_orbitDistance = (std::max)(0.25f, std::sqrt(dxp * dxp + dyp * dyp + dzp * dzp));
     }
     if (m_input.mmbDown && !m_isDragging) {
         int dx = m_input.mouseX - m_lastCameraMouse.x;
         int dy = m_input.mouseY - m_lastCameraMouse.y;
 
-        bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-        if (shiftDown) {
-            DirectX::XMFLOAT3 right = m_camera.Right();
-            DirectX::XMFLOAT3 up = DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f);
-
-            float scale = m_camera.panSpeed * m_orbitDistance;
-            DirectX::XMFLOAT3 delta = DirectX::XMFLOAT3(
-                (-float(dx) * scale) * right.x + (float(dy) * scale) * up.x,
-                (-float(dx) * scale) * right.y + (float(dy) * scale) * up.y,
-                (-float(dx) * scale) * right.z + (float(dy) * scale) * up.z
-            );
-
-            DirectX::XMFLOAT3 pos = m_camera.Position();
-            pos.x += delta.x; pos.y += delta.y; pos.z += delta.z;
-            m_camera.SetPosition(pos);
-
-            m_viewPivot.x += delta.x; m_viewPivot.y += delta.y; m_viewPivot.z += delta.z;
-        } else {
-            m_camera.AddYawPitch(dx * m_camera.mouseSensitivity, dy * m_camera.mouseSensitivity);
-
-            DirectX::XMFLOAT3 f = m_camera.Forward();
-            DirectX::XMFLOAT3 pos = DirectX::XMFLOAT3(
-                m_viewPivot.x - f.x * m_orbitDistance,
-                m_viewPivot.y - f.y * m_orbitDistance,
-                m_viewPivot.z - f.z * m_orbitDistance
-            );
-            m_camera.SetPosition(pos);
-        }
+        m_camera.Pan(float(dx), float(dy));
 
         m_lastCameraMouse = { m_input.mouseX, m_input.mouseY };
     }
 
     // Dolly (wheel).
-    // - While RMB fly is held: dolly along camera forward (current behavior).
-    // - Otherwise: dolly toward/away from the view pivot (Blender-like zoom).
     if (m_input.wheelDelta != 0 && !m_isDragging) {
         float steps = float(m_input.wheelDelta) / 120.0f;
-        if (m_input.rmbDown) {
-            m_camera.Dolly(steps);
-        } else {
-            m_orbitDistance = (std::max)(0.25f, m_orbitDistance - steps * m_camera.dollySpeed);
-
-            DirectX::XMFLOAT3 f = m_camera.Forward();
-            DirectX::XMFLOAT3 pos = DirectX::XMFLOAT3(
-                m_viewPivot.x - f.x * m_orbitDistance,
-                m_viewPivot.y - f.y * m_orbitDistance,
-                m_viewPivot.z - f.z * m_orbitDistance
-            );
-            m_camera.SetPosition(pos);
-        }
+        m_camera.Dolly(steps);
     }
 
     // WASD move only while RMB is held (Unreal-ish).
@@ -164,27 +94,6 @@ void App::Update(float dt) {
     // Focus.
     if (m_input.fPressed && !m_isDragging) {
         FocusCamera();
-    }
-
-    // Keep the orbit pivot at the center of the view when not actively orbiting/panning.
-    // This matches Blender's "orbit around view center" feel and avoids hidden selection pivots.
-    // Keep the orbit pivot dynamically centered on what you're looking at when you're not orbiting/panning.
-    // Blender-like "Orbit Around View" feel: pivot tracks the center of the viewport.
-    // For now we compute this as intersection of the center ray with the Z=0 plane.
-    if (!m_input.mmbDown && !m_isDragging) {
-        int cx = int(width * 0.5f);
-        int cy = int(height * 0.5f);
-
-        float px = 0.0f, py = 0.0f;
-        if (ScreenToWorldOnZPlane(cx, cy, px, py)) {
-            m_viewPivot = DirectX::XMFLOAT3(px, py, 0.0f);
-
-            DirectX::XMFLOAT3 pos = m_camera.Position();
-            float dxp = pos.x - m_viewPivot.x;
-            float dyp = pos.y - m_viewPivot.y;
-            float dzp = pos.z - m_viewPivot.z;
-            m_orbitDistance = (std::max)(0.25f, std::sqrt(dxp * dxp + dyp * dyp + dzp * dzp));
-        }
     }
 
     // Object move (when not in RMB-fly mode).
@@ -240,16 +149,7 @@ void App::Update(float dt) {
 
     UpdateViewProj();
 
-    // Debug: visualize orbit pivot as a tiny cyan tetra at m_viewPivot.
-    // This helps validate what point MMB orbit is rotating around.
-    uint32_t renderCount = m_objectCount;
-    uint32_t pivotIndex = 0xFFFFFFFFu;
-    if (renderCount < kMaxObjects) {
-        pivotIndex = renderCount;
-        renderCount++;
-    }
-
-    m_engine->SetObjectCount(renderCount);
+    m_engine->SetObjectCount(m_objectCount);
 
     for (uint32_t i = 0; i < m_objectCount; ++i) {
         XMMATRIX W = XMMatrixTranslation(
@@ -261,16 +161,6 @@ void App::Update(float dt) {
         XMFLOAT4X4 world;
         XMStoreFloat4x4(&world, W);
         m_engine->SetObjectWorld(i, world);
-    }
-
-    if (pivotIndex != 0xFFFFFFFFu) {
-        XMMATRIX W = XMMatrixScaling(0.15f, 0.15f, 0.15f) * XMMatrixTranslation(m_viewPivot.x, m_viewPivot.y, m_viewPivot.z);
-        XMFLOAT4X4 world;
-        XMStoreFloat4x4(&world, W);
-        m_engine->SetObjectWorld(pivotIndex, world);
-        m_engine->SetDebugPivotIndex(pivotIndex);
-    } else {
-        m_engine->SetDebugPivotIndex(0xFFFFFFFFu);
     }
 
     m_engine->SetSelectedObject(m_activeObject);
@@ -381,7 +271,7 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
                 if (!wasDown && wParam == VK_DELETE) {
                     DeleteActiveObject();
                 }
-                // Select object 1â€“9
+                // Select object 1–9
                 if (!wasDown && wParam >= '1' && wParam <= '9') {
                     uint32_t idx = uint32_t(wParam - '1');
                     if (idx < m_objectCount)
@@ -449,31 +339,7 @@ void App::FocusCamera() {
         m_editMesh->GetVertex(1),
         m_editMesh->GetVertex(2),
     };
-    // Compute the same center/radius that EditorCamera::FocusOnPoints uses so we can
-    // update our view-center pivot and orbit distance.
-    DirectX::XMFLOAT3 c = { 0, 0, 0 };
-    for (int i = 0; i < 3; ++i) {
-        c.x += pts[i].x;
-        c.y += pts[i].y;
-        c.z += pts[i].z;
-    }
-    c.x /= 3.0f; c.y /= 3.0f; c.z /= 3.0f;
-
-    float r = 0.0f;
-    for (int i = 0; i < 3; ++i) {
-        float dx = pts[i].x - c.x;
-        float dy = pts[i].y - c.y;
-        float dz = pts[i].z - c.z;
-        r = (std::max)(r, std::sqrt(dx * dx + dy * dy + dz * dz));
-    }
-    r = (std::max)(r, 0.5f);
-
-    float dist = r / std::tan(DirectX::XM_PIDIV4 * 0.5f);
-    dist = (std::max)(dist, 1.0f);
-
     m_camera.FocusOnPoints(pts, 3);
-    m_viewPivot = c;
-    m_orbitDistance = dist;
 }
 
 bool App::AddObject(const DirectX::XMFLOAT3& pos) {
@@ -491,7 +357,7 @@ bool App::DuplicateActiveObject() {
         return false;
 
     DirectX::XMFLOAT3 p = m_objectPos[m_activeObject];
-    p.x += 0.5f; // small offset so itâ€™s visible
+    p.x += 0.5f; // small offset so it’s visible
     return AddObject(p);
 }
 

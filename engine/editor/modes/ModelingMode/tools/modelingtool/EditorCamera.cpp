@@ -110,6 +110,26 @@ void EditorCamera::FocusOnPoints(const XMFLOAT3* points, int count) {
     XMStoreFloat3(&m_position, pos);
 }
 
+void EditorCamera::LookAt(const DirectX::XMFLOAT3& target) {
+    using namespace DirectX;
+
+    XMVECTOR posV = XMLoadFloat3(&m_position);
+    XMVECTOR tgtV = XMLoadFloat3(&target);
+
+    XMVECTOR dirV = XMVector3Normalize(tgtV - posV);
+    XMFLOAT3 dir;
+    XMStoreFloat3(&dir, dirV);
+
+    // This camera uses +Z as its local forward direction.
+    // NOTE: With the rotation convention used by XMMatrixRotationRollPitchYaw in this
+    // left-handed camera setup, a positive pitch rotates the forward vector toward -Y.
+    // So to match a desired dir.y, we use -asin(dir.y).
+    m_yaw = std::atan2(dir.x, dir.z);
+
+    const float limit = DirectX::XM_PIDIV2 - 0.001f;
+    m_pitch = Clamp(-std::asin(dir.y), -limit, limit);
+}
+
 void EditorCamera::UpdateMatrices() {
     float aspect = (m_viewH > 0.0f) ? (m_viewW / m_viewH) : 1.0f;
 

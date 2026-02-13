@@ -12,6 +12,9 @@ public:
 
     void AddYawPitch(float yawDelta, float pitchDelta);
     void MoveLocal(float forward, float right, float up);
+
+    // Set yaw/pitch so the camera looks at a world-space target.
+    void LookAt(const DirectX::XMFLOAT3& target);
     void Pan(float dxPixels, float dyPixels);
     void Dolly(float wheelSteps);
 
@@ -23,6 +26,9 @@ public:
     DirectX::XMFLOAT3 Forward() const;
     DirectX::XMFLOAT3 Right() const;
 
+    float Yaw() const { return m_yaw; }
+    float Pitch() const { return m_pitch; }
+
     // Ray from screen pixel into world (for picking/dragging).
     void BuildRayFromScreen(float screenX, float screenY, DirectX::XMFLOAT3& outOrigin, DirectX::XMFLOAT3& outDir) const;
 
@@ -33,7 +39,7 @@ public:
     float dollySpeed = 1.0f;         // units per wheel step
 
 private:
-    DirectX::XMFLOAT3 m_position = { 0.0f, 0.0f, -3.0f };
+    DirectX::XMFLOAT3 m_position = { 0.0f, 2.0f, -3.0f };
     float m_yaw = 0.0f;
     float m_pitch = 0.0f;
 

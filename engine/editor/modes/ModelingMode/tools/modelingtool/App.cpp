@@ -4,11 +4,33 @@
 #include <DirectXMath.h>
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 using namespace DirectX;
 
 App::App(EditorCamera& camera) : m_camera(camera) {
     m_ctx.camera = &m_camera;
+
+    // Startup camera framing: look at the origin (Blender-like default scene framing).
+    m_viewPivot = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    m_camera.LookAt(m_viewPivot);
+    {
+        char buf[256];
+        DirectX::XMFLOAT3 fwd = m_camera.Forward();
+        std::snprintf(buf, sizeof(buf), "Startup LookAt: yaw=%.3f pitch=%.3f fwd=(%.3f,%.3f,%.3f) pos=(%.3f,%.3f,%.3f) pivot=(%.3f,%.3f,%.3f)\n",
+            m_camera.Yaw(), m_camera.Pitch(), fwd.x, fwd.y, fwd.z,
+            m_camera.Position().x, m_camera.Position().y, m_camera.Position().z,
+            m_viewPivot.x, m_viewPivot.y, m_viewPivot.z);
+        OutputDebugStringA(buf);
+    }
+    {
+        DirectX::XMFLOAT3 pos = m_camera.Position();
+        float dx = pos.x - m_viewPivot.x;
+        float dy = pos.y - m_viewPivot.y;
+        float dz = pos.z - m_viewPivot.z;
+        m_orbitDistance = (std::max)(0.25f, std::sqrt(dx * dx + dy * dy + dz * dz));
+    }
+
 
     m_objectCount = 2;
     m_objectPos[0] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);

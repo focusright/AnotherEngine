@@ -72,22 +72,13 @@ void App::Update(float dt) {
     if (m_input.mmbPressed) {
         m_lastCameraMouse = { m_input.mouseX, m_input.mouseY };
 
-        // Blender-like behavior: when you start orbiting, lock the pivot to whatever is under the
-        // center of the view (for now: intersection of the center ray with Z=0).
-        int cx = int(width * 0.5f);
-        int cy = int(height * 0.5f);
-
-        float px = 0.0f, py = 0.0f;
-        if (ScreenToWorldOnZPlane(cx, cy, px, py)) {
-            m_viewPivot = DirectX::XMFLOAT3(px, py, 0.0f);
-        }
-
+        // General Blender-like orbit-around-view behavior:
+        // pivot is the center of the view at the current orbit distance (no geometry hit test).
         DirectX::XMFLOAT3 pos = m_camera.Position();
-        float dxp = pos.x - m_viewPivot.x;
-        float dyp = pos.y - m_viewPivot.y;
-        float dzp = pos.z - m_viewPivot.z;
-        // NOTE: Use (std::max)(...) to avoid Windows.h max macro collisions.
-        m_orbitDistance = (std::max)(0.25f, std::sqrt(dxp * dxp + dyp * dyp + dzp * dzp));
+        DirectX::XMFLOAT3 fwd = m_camera.Forward();
+
+        m_orbitDistance = (std::max)(0.25f, m_orbitDistance);
+        m_viewPivot = DirectX::XMFLOAT3(pos.x + fwd.x * m_orbitDistance, pos.y + fwd.y * m_orbitDistance, pos.z + fwd.z * m_orbitDistance);
     }
     if (m_input.mmbDown && !m_isDragging) {
         int dx = m_input.mouseX - m_lastCameraMouse.x;
@@ -168,24 +159,16 @@ void App::Update(float dt) {
 
     // Keep the orbit pivot at the center of the view when not actively orbiting/panning.
     // This matches Blender's "orbit around view center" feel and avoids hidden selection pivots.
-    // Keep the orbit pivot dynamically centered on what you're looking at when you're not orbiting/panning.
-    // Blender-like "Orbit Around View" feel: pivot tracks the center of the viewport.
-    // For now we compute this as intersection of the center ray with the Z=0 plane.
+    // // Keep the orbit pivot dynamically centered on the view (no geometry constraint).
+    // pivot = cameraPos + forward * orbitDistance
     if (!m_input.mmbDown && !m_isDragging) {
-        int cx = int(width * 0.5f);
-        int cy = int(height * 0.5f);
+        DirectX::XMFLOAT3 pos = m_camera.Position();
+        DirectX::XMFLOAT3 fwd = m_camera.Forward();
 
-        float px = 0.0f, py = 0.0f;
-        if (ScreenToWorldOnZPlane(cx, cy, px, py)) {
-            m_viewPivot = DirectX::XMFLOAT3(px, py, 0.0f);
-
-            DirectX::XMFLOAT3 pos = m_camera.Position();
-            float dxp = pos.x - m_viewPivot.x;
-            float dyp = pos.y - m_viewPivot.y;
-            float dzp = pos.z - m_viewPivot.z;
-            m_orbitDistance = (std::max)(0.25f, std::sqrt(dxp * dxp + dyp * dyp + dzp * dzp));
-        }
+        m_orbitDistance = (std::max)(0.25f, m_orbitDistance);
+        m_viewPivot = DirectX::XMFLOAT3(pos.x + fwd.x * m_orbitDistance, pos.y + fwd.y * m_orbitDistance, pos.z + fwd.z * m_orbitDistance);
     }
+
 
     // Object move (when not in RMB-fly mode).
     // Layer note: this is "app/input"... no D3D12 layer yet; we just update transforms.

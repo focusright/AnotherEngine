@@ -16,6 +16,8 @@ void Engine::SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12Gr
     m_vertexBufferTetra = vertexBufferTetra;
     m_vertexBufferGrid = vertexBufferGrid;
     m_gridVertexCount = gridVertexCount;
+    m_gizmoVertexCount = 6;
+    m_gridBaseVertexCount = (gridVertexCount >= m_gizmoVertexCount) ? (gridVertexCount - m_gizmoVertexCount) : gridVertexCount;
     m_width = width;
     m_height = height;
 }
@@ -96,11 +98,19 @@ void Engine::PopulateCommandList() {
         DirectX::XMStoreFloat4x4(&wvp, VP);
         m_commandList->SetGraphicsRoot32BitConstants(0, 16, &wvp, 0);
 
-        // Slightly dim gray; vertex colors already carry line emphasis.
+        // 1) Base grid (dim)
         DirectX::XMFLOAT4 tint = DirectX::XMFLOAT4(0.35f, 0.35f, 0.35f, 1.0f);
         m_commandList->SetGraphicsRoot32BitConstants(1, 4, &tint, 0);
 
-        m_commandList->DrawInstanced(m_gridVertexCount, 1, 0, 0);
+        uint32_t baseCount = (m_gridBaseVertexCount > 0 && m_gridBaseVertexCount <= m_gridVertexCount) ? m_gridBaseVertexCount : m_gridVertexCount;
+        m_commandList->DrawInstanced(baseCount, 1, 0, 0);
+
+        // 2) Gizmo tail (full brightness)
+        if (m_gizmoVertexCount > 0 && (baseCount + m_gizmoVertexCount) <= m_gridVertexCount) {
+            tint = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+            m_commandList->SetGraphicsRoot32BitConstants(1, 4, &tint, 0);
+            m_commandList->DrawInstanced(m_gizmoVertexCount, 1, baseCount, 0);
+        }
     }
 
     // Now draw the objects (triangles).
@@ -127,7 +137,8 @@ void Engine::PopulateCommandList() {
         DirectX::XMFLOAT4X4 wvp;
         DirectX::XMStoreFloat4x4(&wvp, WVP);
         m_commandList->SetGraphicsRoot32BitConstants(0, 16, &wvp, 0);
-        DirectX::XMFLOAT4 tint = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        DirectX::XMFLOAT4 tint = m_tint[i];
+        if (tint.w == 0.0f) { tint = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f); }
         if (i == m_debugPivotIndex) {
             tint = DirectX::XMFLOAT4(0.25f, 1.0f, 1.0f, 1.0f);
         }
@@ -189,10 +200,41 @@ void Engine::SetObjectCount(uint32_t count) {
     if (n > kMaxObjects) n = kMaxObjects;
     for (uint32_t i = 0; i < n; ++i) {
         DirectX::XMStoreFloat4x4(&m_world[i], DirectX::XMMatrixIdentity());
+        m_tint[i] = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     }
 }
 
 void Engine::SetObjectWorld(uint32_t index, const DirectX::XMFLOAT4X4& world) {
     if (index >= kMaxObjects) return;
     m_world[index] = world;
+}
+
+
+void Engine::SetObjectTint(uint32_t index, const DirectX::XMFLOAT4& tint) {
+    if (index >= kMaxObjects) return;
+    m_tint[index] = tint;
+}
+
+void Engine::UpdateGizmoVertices(const Vertex* verts, uint32_t count, HWND hwnd) {
+    if (!m_vertexBufferGrid || !verts || count == 0) return;
+
+    // Clamp count so we don't write past the allocated tail.
+    if (count > m_gizmoVertexCount) count = m_gizmoVertexCount;
+    if (m_gridBaseVertexCount + count > m_gridVertexCount) return;
+
+    UINT8* pData = nullptr;
+    D3D12_RANGE readRange = { 0, 0 };
+
+    HRESULT hr = m_vertexBufferGrid->Map(0, &readRange, reinterpret_cast<void**>(&pData));
+    if (FAILED(hr) || !pData) {
+        wchar_t buf[256];
+        swprintf_s(buf, L"Grid VertexBuffer Map failed (gizmo). hr=0x%08X", (unsigned)hr);
+        MessageBox(hwnd, buf, L"Error", MB_OK);
+        return;
+    }
+
+    size_t byteOffset = sizeof(Vertex) * size_t(m_gridBaseVertexCount);
+    memcpy(pData + byteOffset, verts, sizeof(Vertex) * count);
+
+    m_vertexBufferGrid->Unmap(0, nullptr);
 }

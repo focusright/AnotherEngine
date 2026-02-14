@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "App.h"
 #include "EditableMesh.h"
 #include "RenderMesh.h"
@@ -5,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 using namespace DirectX;
 
@@ -32,7 +35,14 @@ App::App(EditorCamera& camera) : m_camera(camera) {
     }
 
 
-    m_objectCount = 2;
+    // Initialize per-object transform components.
+for (uint32_t i = 0; i < kMaxObjects; ++i) {
+    m_objectRot[i] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    m_objectScale[i] = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    m_objectColor[i] = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+}
+
+m_objectCount = 2;
     m_objectPos[0] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_objectPos[1] = DirectX::XMFLOAT3(2.0f, 0.0f, 0.0f);
 }
@@ -257,15 +267,14 @@ void App::Update(float dt) {
     m_engine->SetObjectCount(renderCount);
 
     for (uint32_t i = 0; i < m_objectCount; ++i) {
-        XMMATRIX W = XMMatrixTranslation(
-            m_objectPos[i].x,
-            m_objectPos[i].y,
-            m_objectPos[i].z
-        );
-
+        XMMATRIX S = XMMatrixScaling(m_objectScale[i].x, m_objectScale[i].y, m_objectScale[i].z);
+XMMATRIX R = XMMatrixRotationRollPitchYaw(m_objectRot[i].x, m_objectRot[i].y, m_objectRot[i].z);
+XMMATRIX T = XMMatrixTranslation(m_objectPos[i].x, m_objectPos[i].y, m_objectPos[i].z);
+XMMATRIX W = S * R * T;
         XMFLOAT4X4 world;
         XMStoreFloat4x4(&world, W);
         m_engine->SetObjectWorld(i, world);
+        m_engine->SetObjectTint(i, m_objectColor[i]);
     }
 
     if (pivotIndex != 0xFFFFFFFFu) {
@@ -277,6 +286,8 @@ void App::Update(float dt) {
     } else {
         m_engine->SetDebugPivotIndex(0xFFFFFFFFu);
     }
+
+    UpdateGizmo();
 
     m_engine->SetSelectedObject(m_activeObject);
 
@@ -373,6 +384,15 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
                 bool wasDown = (lParam & (1 << 30)) != 0;
                 m_input.keys[wParam] = true;
                 if (!wasDown && (wParam == 'F')) { m_input.fPressed = true; }
+
+                // Scene save/load (v0.0.2)
+                if (!wasDown && wParam == 'S' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
+                    SaveSceneAem(L"scene.aem");
+                }
+                if (!wasDown && wParam == 'O' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
+                    LoadSceneAem(L"scene.aem");
+                }
+
 
                 // Add new object at origin
                 if (!wasDown && wParam == 'N') {
@@ -481,11 +501,243 @@ void App::FocusCamera() {
     m_orbitDistance = dist;
 }
 
+
+bool App::SaveSceneAem(const wchar_t* path) {
+    // File format:
+    //   AE_MODEL 1
+    //   objects N
+    //   active I
+    //   obj tetra px py pz rx ry rz sx sy sz cr cg cb ca
+    FILE* f = nullptr;
+    if (_wfopen_s(&f, path, L"wb") != 0 || !f) return false;
+
+    std::fprintf(f, "AE_MODEL 1\n");
+    std::fprintf(f, "objects %u\n", (unsigned)m_objectCount);
+    std::fprintf(f, "active %u\n", (unsigned)m_activeObject);
+
+    for (uint32_t i = 0; i < m_objectCount; ++i) {
+        std::fprintf(f, "obj tetra %.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g\n",
+            m_objectPos[i].x, m_objectPos[i].y, m_objectPos[i].z,
+            m_objectRot[i].x, m_objectRot[i].y, m_objectRot[i].z,
+            m_objectScale[i].x, m_objectScale[i].y, m_objectScale[i].z,
+            m_objectColor[i].x, m_objectColor[i].y, m_objectColor[i].z, m_objectColor[i].w
+        );
+    }
+
+    std::fclose(f);
+    return true;
+}
+
+bool App::LoadSceneAem(const wchar_t* path) {
+    FILE* f = nullptr;
+    if (_wfopen_s(&f, path, L"rb") != 0 || !f) return false;
+
+    char header[64] = {};
+    int ver = 0;
+    if (std::fscanf(f, "%63s %d", header, &ver) != 2) { std::fclose(f); return false; }
+    if (std::strcmp(header, "AE_MODEL") != 0 || ver != 1) { std::fclose(f); return false; }
+
+    char key[64] = {};
+    unsigned n = 0;
+    if (std::fscanf(f, "%63s %u", key, &n) != 2) { std::fclose(f); return false; }
+    if (std::strcmp(key, "objects") != 0) { std::fclose(f); return false; }
+
+    unsigned active = 0;
+    if (std::fscanf(f, "%63s %u", key, &active) != 2) { std::fclose(f); return false; }
+    if (std::strcmp(key, "active") != 0) { std::fclose(f); return false; }
+
+    if (n == 0) n = 1;
+    if (n > kMaxObjects) n = kMaxObjects;
+
+    m_objectCount = (uint32_t)n;
+    m_activeObject = (active < m_objectCount) ? (uint32_t)active : 0;
+
+    for (uint32_t i = 0; i < m_objectCount; ++i) {
+        char objKey[16] = {};
+        char prim[16] = {};
+        if (std::fscanf(f, "%15s %15s", objKey, prim) != 2) { std::fclose(f); return false; }
+        if (std::strcmp(objKey, "obj") != 0) { std::fclose(f); return false; }
+        if (std::strcmp(prim, "tetra") != 0) { std::fclose(f); return false; }
+
+        if (std::fscanf(f, "%f %f %f %f %f %f %f %f %f %f %f %f %f",
+            &m_objectPos[i].x, &m_objectPos[i].y, &m_objectPos[i].z,
+            &m_objectRot[i].x, &m_objectRot[i].y, &m_objectRot[i].z,
+            &m_objectScale[i].x, &m_objectScale[i].y, &m_objectScale[i].z,
+            &m_objectColor[i].x, &m_objectColor[i].y, &m_objectColor[i].z, &m_objectColor[i].w
+        ) != 13) { std::fclose(f); return false; }
+    }
+
+    std::fclose(f);
+    return true;
+}
+
+bool App::GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis) {
+    // Pick the closest axis by ray-to-segment distance.
+    // We use a conservative threshold in world units.
+    DirectX::XMFLOAT3 ro, rd;
+    m_camera.BuildRayFromScreen(float(mouseX), float(mouseY), ro, rd);
+
+    DirectX::XMFLOAT3 o = m_objectPos[m_activeObject];
+    const float axisLen = 1.25f;
+
+    auto testAxis = [&](int axis, const DirectX::XMFLOAT3& dir, float& outT, float& outDistSq) {
+        // Segment [o, o + dir*axisLen]
+        DirectX::XMVECTOR RO = DirectX::XMLoadFloat3(&ro);
+        DirectX::XMVECTOR RD = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&rd));
+        DirectX::XMVECTOR O = DirectX::XMLoadFloat3(&o);
+        DirectX::XMVECTOR D = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&dir));
+        DirectX::XMVECTOR P1 = O;
+        DirectX::XMVECTOR P2 = DirectX::XMVectorAdd(O, DirectX::XMVectorScale(D, axisLen));
+
+        // Compute closest points between ray (RO + u*RD, u>=0) and infinite line (P1 + t*D).
+        DirectX::XMVECTOR w0 = DirectX::XMVectorSubtract(RO, P1);
+        float a = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, RD));
+        float b = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, D));
+        float c = DirectX::XMVectorGetX(DirectX::XMVector3Dot(D, D));
+        float d = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, w0));
+        float e = DirectX::XMVectorGetX(DirectX::XMVector3Dot(D, w0));
+        float denom = a * c - b * b;
+
+        float u = 0.0f;
+        float t = 0.0f;
+        if (fabsf(denom) > 1e-6f) {
+            u = (b * e - c * d) / denom;
+            t = (a * e - b * d) / denom;
+        }
+
+        if (u < 0.0f) u = 0.0f;
+
+        // Clamp t to segment.
+        if (t < 0.0f) t = 0.0f;
+        if (t > axisLen) t = axisLen;
+
+        DirectX::XMVECTOR C0 = DirectX::XMVectorAdd(RO, DirectX::XMVectorScale(RD, u));
+        DirectX::XMVECTOR C1 = DirectX::XMVectorAdd(P1, DirectX::XMVectorScale(D, t));
+        DirectX::XMVECTOR diff = DirectX::XMVectorSubtract(C0, C1);
+        outDistSq = DirectX::XMVectorGetX(DirectX::XMVector3Dot(diff, diff));
+        outT = t;
+    };
+
+    float bestDistSq = 1e30f;
+    int bestAxis = -1;
+    float bestT = 0.0f;
+
+    float t, dsq;
+
+    testAxis(0, DirectX::XMFLOAT3(1, 0, 0), t, dsq);
+    if (dsq < bestDistSq) { bestDistSq = dsq; bestAxis = 0; bestT = t; }
+
+    testAxis(1, DirectX::XMFLOAT3(0, 1, 0), t, dsq);
+    if (dsq < bestDistSq) { bestDistSq = dsq; bestAxis = 1; bestT = t; }
+
+    testAxis(2, DirectX::XMFLOAT3(0, 0, 1), t, dsq);
+    if (dsq < bestDistSq) { bestDistSq = dsq; bestAxis = 2; bestT = t; }
+
+    // Threshold: tune for your world scale (tetra size ~0.8)
+    const float thresh = 0.15f;
+    if (bestDistSq > thresh * thresh) return false;
+
+    outAxis = bestAxis;
+    outTOnAxis = bestT;
+    return true;
+}
+
+bool App::GizmoComputeTOnAxis(int axis, int mouseX, int mouseY, float& outTOnAxis) {
+    DirectX::XMFLOAT3 ro, rd;
+    m_camera.BuildRayFromScreen(float(mouseX), float(mouseY), ro, rd);
+
+    DirectX::XMFLOAT3 o = m_objectPos[m_activeObject];
+    DirectX::XMFLOAT3 dir = (axis == 0) ? DirectX::XMFLOAT3(1, 0, 0) : (axis == 1) ? DirectX::XMFLOAT3(0, 1, 0) : DirectX::XMFLOAT3(0, 0, 1);
+
+    DirectX::XMVECTOR RO = DirectX::XMLoadFloat3(&ro);
+    DirectX::XMVECTOR RD = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&rd));
+    DirectX::XMVECTOR O = DirectX::XMLoadFloat3(&o);
+    DirectX::XMVECTOR D = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&dir));
+
+    DirectX::XMVECTOR w0 = DirectX::XMVectorSubtract(RO, O);
+    float a = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, RD));
+    float b = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, D));
+    float c = DirectX::XMVectorGetX(DirectX::XMVector3Dot(D, D));
+    float d = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, w0));
+    float e = DirectX::XMVectorGetX(DirectX::XMVector3Dot(D, w0));
+    float denom = a * c - b * b;
+
+    float u = 0.0f;
+    float t = 0.0f;
+    if (fabsf(denom) > 1e-6f) {
+        u = (b * e - c * d) / denom;
+        t = (a * e - b * d) / denom;
+    }
+
+    if (u < 0.0f) u = 0.0f;
+    outTOnAxis = t;
+    return true;
+}
+
+void App::UpdateGizmo() {
+    if (!m_engine) return;
+    if (m_activeObject >= m_objectCount) return;
+
+    // 1) Render gizmo (always at active object's position).
+    {
+        Vertex gizmo[kGizmoVertexCount] = {};
+
+        DirectX::XMFLOAT3 o = m_objectPos[m_activeObject];
+        const float len = 1.25f;
+
+        gizmo[0] = { o, DirectX::XMFLOAT4(1, 0, 0, 1) };
+        gizmo[1] = { DirectX::XMFLOAT3(o.x + len, o.y, o.z), DirectX::XMFLOAT4(1, 0, 0, 1) };
+
+        gizmo[2] = { o, DirectX::XMFLOAT4(0, 1, 0, 1) };
+        gizmo[3] = { DirectX::XMFLOAT3(o.x, o.y + len, o.z), DirectX::XMFLOAT4(0, 1, 0, 1) };
+
+        gizmo[4] = { o, DirectX::XMFLOAT4(0.2f, 0.5f, 1, 1) };
+        gizmo[5] = { DirectX::XMFLOAT3(o.x, o.y, o.z + len), DirectX::XMFLOAT4(0.2f, 0.5f, 1, 1) };
+
+        m_engine->UpdateGizmoVertices(gizmo, kGizmoVertexCount, m_hwnd);
+    }
+
+    // 2) Input: start drag on LMB press (only when not in RMB-fly mode).
+    if (!m_input.rmbDown && m_input.lmbPressed && !m_gizmoDragging) {
+        int axis = -1;
+        float t0 = 0.0f;
+        if (GizmoPickAxis(m_input.mouseX, m_input.mouseY, axis, t0)) {
+            m_gizmoActiveAxis = axis;
+            m_gizmoDragging = true;
+            m_gizmoDragT0 = t0;
+            m_gizmoStartPos = m_objectPos[m_activeObject];
+        }
+    }
+
+    // 3) While dragging: update object position along axis.
+    if (m_gizmoDragging && m_input.lmbDown && m_gizmoActiveAxis != -1) {
+        float t = 0.0f;
+        if (GizmoComputeTOnAxis(m_gizmoActiveAxis, m_input.mouseX, m_input.mouseY, t)) {
+            float dt = t - m_gizmoDragT0;
+            DirectX::XMFLOAT3 axisDir = (m_gizmoActiveAxis == 0) ? DirectX::XMFLOAT3(1, 0, 0) : (m_gizmoActiveAxis == 1) ? DirectX::XMFLOAT3(0, 1, 0) : DirectX::XMFLOAT3(0, 0, 1);
+            m_objectPos[m_activeObject] = DirectX::XMFLOAT3(
+                m_gizmoStartPos.x + axisDir.x * dt,
+                m_gizmoStartPos.y + axisDir.y * dt,
+                m_gizmoStartPos.z + axisDir.z * dt
+            );
+        }
+    }
+
+    // 4) End drag.
+    if (m_gizmoDragging && m_input.lmbReleased) {
+        m_gizmoDragging = false;
+        m_gizmoActiveAxis = -1;
+    }
+}
+
 bool App::AddObject(const DirectX::XMFLOAT3& pos) {
     if (m_objectCount >= kMaxObjects)
         return false;
 
     m_objectPos[m_objectCount] = pos;
+    m_objectRot[m_objectCount] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    m_objectScale[m_objectCount] = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    m_objectColor[m_objectCount] = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     m_objectCount++;
     m_activeObject = m_objectCount - 1;
     return true;
@@ -496,8 +748,15 @@ bool App::DuplicateActiveObject() {
         return false;
 
     DirectX::XMFLOAT3 p = m_objectPos[m_activeObject];
+    DirectX::XMFLOAT3 r = m_objectRot[m_activeObject];
+    DirectX::XMFLOAT3 s = m_objectScale[m_activeObject];
+    DirectX::XMFLOAT4 c = m_objectColor[m_activeObject];
     p.x += 0.5f; // small offset so it’s visible
-    return AddObject(p);
+    if (!AddObject(p)) return false;
+    m_objectRot[m_activeObject] = r;
+    m_objectScale[m_activeObject] = s;
+    m_objectColor[m_activeObject] = c;
+    return true;
 }
 
 bool App::DeleteActiveObject() {
@@ -507,8 +766,12 @@ bool App::DeleteActiveObject() {
     if (m_activeObject >= m_objectCount)
         return false;
 
-    for (uint32_t i = m_activeObject + 1; i < m_objectCount; ++i)
+    for (uint32_t i = m_activeObject + 1; i < m_objectCount; ++i) {
         m_objectPos[i - 1] = m_objectPos[i];
+        m_objectRot[i - 1] = m_objectRot[i];
+        m_objectScale[i - 1] = m_objectScale[i];
+        m_objectColor[i - 1] = m_objectColor[i];
+    }
 
     m_objectCount--;
 

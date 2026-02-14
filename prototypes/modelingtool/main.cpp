@@ -353,7 +353,9 @@ void CreateGridVertexBuffer() {
 
     const uint32_t linesPerDir = uint32_t(2 * N + 1);
     const uint32_t lineCount = linesPerDir * 2; // X-parallel + Z-parallel
-    g_gridVertexCount = lineCount * 2;
+    const uint32_t baseGridVertexCount = lineCount * 2;
+    const uint32_t gizmoVertexCount = 6; // 3 axes * 2 verts (written each frame)
+    g_gridVertexCount = baseGridVertexCount + gizmoVertexCount;
 
     Vertex* verts = new Vertex[g_gridVertexCount];
     uint32_t v = 0;
@@ -377,6 +379,11 @@ void CreateGridVertexBuffer() {
         XMFLOAT4 colZ = (i == 0) ? axisZ : gray;
         verts[v++] = { XMFLOAT3(k, y, -halfSize), colZ };
         verts[v++] = { XMFLOAT3(k, y,  halfSize), colZ };
+    }
+
+    // Reserve tail vertices for the translate gizmo (written every frame by the editor).
+    for (; v < g_gridVertexCount; ++v) {
+        verts[v] = { XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f) };
     }
 
     const UINT vbSize = sizeof(Vertex) * g_gridVertexCount;

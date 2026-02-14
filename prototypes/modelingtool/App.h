@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <DirectXMath.h>
+#include <cstdint>
 #include "Engine.h"
 #include "EditorCamera.h"
 #include "EditorContext.h"
@@ -36,6 +37,9 @@ public:
     bool AddObject(const DirectX::XMFLOAT3& pos);
     bool DuplicateActiveObject();
     bool DeleteActiveObject();
+
+    bool SaveSceneAem(const wchar_t* path);
+    bool LoadSceneAem(const wchar_t* path);
 
 private:
     struct InputState {
@@ -86,8 +90,21 @@ private:
     uint32_t m_objectCount = 2;
     uint32_t m_activeObject = 0;
     DirectX::XMFLOAT3 m_objectPos[kMaxObjects] = {};
+    DirectX::XMFLOAT3 m_objectRot[kMaxObjects] = {};   // Euler radians (pitch,yaw,roll) for now
+    DirectX::XMFLOAT3 m_objectScale[kMaxObjects] = {};
+    DirectX::XMFLOAT4 m_objectColor[kMaxObjects] = {}; // per-object tint (saved)
+
+    // Translate gizmo (world-space)
+    static const uint32_t kGizmoVertexCount = 6; // 3 axes * 2 verts
+    int m_gizmoActiveAxis = -1; // 0=X,1=Y,2=Z
+    bool m_gizmoDragging = false;
+    float m_gizmoDragT0 = 0.0f;
+    DirectX::XMFLOAT3 m_gizmoStartPos = { 0,0,0 };
 
     int HitTestVertex(int mouseX, int mouseY);
+    void UpdateGizmo();
+    bool GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis);
+    bool GizmoComputeTOnAxis(int axis, int mouseX, int mouseY, float& outTOnAxis);
     bool ScreenToWorldOnZPlane(int screenX, int screenY, float& worldX, float& worldY);
     void UpdateViewProj();
     void FocusCamera();

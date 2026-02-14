@@ -14,6 +14,7 @@
 class GraphicsDevice;
 struct EditableMesh;
 struct RenderMesh;
+struct Vertex;
 
 class Engine {
 public:
@@ -33,7 +34,11 @@ public:
     // Simple scene support (multiple objects drawn with different world transforms).
     void SetObjectCount(uint32_t count);
     void SetObjectWorld(uint32_t index, const DirectX::XMFLOAT4X4& world);
+    void SetObjectTint(uint32_t index, const DirectX::XMFLOAT4& tint);
     void SetSelectedObject(uint32_t index) { m_selectedObject = index; }
+
+    // Update gizmo vertices written into the tail of the grid vertex buffer (upload heap).
+    void UpdateGizmoVertices(const Vertex* verts, uint32_t count, HWND hwnd);
 
     // Debug helpers (editor-only visualization).
     // If set to a valid index, that object will be tinted cyan to visualize a pivot/marker.
@@ -63,6 +68,11 @@ private:
     static const uint32_t kMaxObjects = 16;
     uint32_t m_objectCount = 1;
     DirectX::XMFLOAT4X4 m_world[kMaxObjects] = {};
+    DirectX::XMFLOAT4 m_tint[kMaxObjects] = {};
+
+    // Grid buffer layout: [gridBase][gizmoTail]
+    uint32_t m_gridBaseVertexCount = 0;
+    uint32_t m_gizmoVertexCount = 0;
 
     uint32_t m_selectedObject = 0;
 

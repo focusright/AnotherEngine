@@ -69,6 +69,33 @@ void CreatePipelineState();
 void CreateVertexBuffer();
 void CreateGridVertexBuffer();
 
+static void ShutdownD3D() {
+    // Make sure the GPU is done before we start tearing down resources.
+    g_engine.WaitForGpu();
+
+    if (g_fenceEvent) {
+        CloseHandle(g_fenceEvent);
+        g_fenceEvent = nullptr;
+    }
+
+    // Release resources in a sane order (roughly reverse of creation).
+    g_vertexBufferGrid.Reset();
+    g_vertexBuffer.Reset();
+
+    g_pipelineStateLine.Reset();
+    g_pipelineState.Reset();
+    g_rootSignature.Reset();
+
+    g_commandList.Reset();
+    g_commandAllocator.Reset();
+
+    g_fence.Reset();
+
+    // Swapchain/queue/rtv heap are owned by g_gfx (ComPtrs in GraphicsDevice).
+    // Device last.
+    g_device.Reset();
+}
+
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int nCmdShow) {
     InitializeWindow(hInstance);
     InitializeDirect3D();
@@ -103,6 +130,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
         g_engine.RenderFrame();
     }
 
+    ShutdownD3D();
     return static_cast<int>(msg.wParam);
 }
 

@@ -96,7 +96,10 @@ private:
 
     // Translate gizmo (world-space)
     static const uint32_t kGizmoVertexCount = 6; // 3 axes * 2 verts
+    static constexpr float kGizmoAxisLen = 1.25f;
+    static constexpr float kGizmoPickThresh = 0.15f;
     int m_gizmoActiveAxis = -1; // 0=X,1=Y,2=Z
+    int m_gizmoHotAxis = -1;    // hover highlight (when not dragging)
     bool m_gizmoDragging = false;
     float m_gizmoDragT0 = 0.0f;
     DirectX::XMFLOAT3 m_gizmoStartPos = { 0,0,0 };

@@ -578,9 +578,9 @@ bool App::GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis)
     m_camera.BuildRayFromScreen(float(mouseX), float(mouseY), ro, rd);
 
     DirectX::XMFLOAT3 o = m_objectPos[m_activeObject];
-    const float axisLen = 1.25f;
+    const float axisLen = kGizmoAxisLen;
 
-    auto testAxis = [&](int axis, const DirectX::XMFLOAT3& dir, float& outT, float& outDistSq) {
+    auto testAxis = [&](int axis, const DirectX::XMFLOAT3& dir, float& outTRaw, float& outDistSq) {
         // Segment [o, o + dir*axisLen]
         DirectX::XMVECTOR RO = DirectX::XMLoadFloat3(&ro);
         DirectX::XMVECTOR RD = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&rd));
@@ -607,6 +607,9 @@ bool App::GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis)
 
         if (u < 0.0f) u = 0.0f;
 
+        // Keep the raw t (infinite line) so drag doesn't "jump" when leaving the handle segment.
+        outTRaw = t;
+
         // Clamp t to segment.
         if (t < 0.0f) t = 0.0f;
         if (t > axisLen) t = axisLen;
@@ -615,30 +618,29 @@ bool App::GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis)
         DirectX::XMVECTOR C1 = DirectX::XMVectorAdd(P1, DirectX::XMVectorScale(D, t));
         DirectX::XMVECTOR diff = DirectX::XMVectorSubtract(C0, C1);
         outDistSq = DirectX::XMVectorGetX(DirectX::XMVector3Dot(diff, diff));
-        outT = t;
     };
 
     float bestDistSq = 1e30f;
     int bestAxis = -1;
-    float bestT = 0.0f;
 
-    float t, dsq;
+    float tRaw, dsq;
+    float bestTRaw = 0.0f;
 
-    testAxis(0, DirectX::XMFLOAT3(1, 0, 0), t, dsq);
-    if (dsq < bestDistSq) { bestDistSq = dsq; bestAxis = 0; bestT = t; }
+    testAxis(0, DirectX::XMFLOAT3(1, 0, 0), tRaw, dsq);
+    if (dsq < bestDistSq) { bestDistSq = dsq; bestAxis = 0; bestTRaw = tRaw; }
 
-    testAxis(1, DirectX::XMFLOAT3(0, 1, 0), t, dsq);
-    if (dsq < bestDistSq) { bestDistSq = dsq; bestAxis = 1; bestT = t; }
+    testAxis(1, DirectX::XMFLOAT3(0, 1, 0), tRaw, dsq);
+    if (dsq < bestDistSq) { bestDistSq = dsq; bestAxis = 1; bestTRaw = tRaw; }
 
-    testAxis(2, DirectX::XMFLOAT3(0, 0, 1), t, dsq);
-    if (dsq < bestDistSq) { bestDistSq = dsq; bestAxis = 2; bestT = t; }
+    testAxis(2, DirectX::XMFLOAT3(0, 0, 1), tRaw, dsq);
+    if (dsq < bestDistSq) { bestDistSq = dsq; bestAxis = 2; bestTRaw = tRaw; }
 
     // Threshold: tune for your world scale (tetra size ~0.8)
-    const float thresh = 0.15f;
+    const float thresh = kGizmoPickThresh;
     if (bestDistSq > thresh * thresh) return false;
 
     outAxis = bestAxis;
-    outTOnAxis = bestT;
+    outTOnAxis = bestTRaw;
     return true;
 }
 
@@ -649,27 +651,38 @@ bool App::GizmoComputeTOnAxis(int axis, int mouseX, int mouseY, float& outTOnAxi
     DirectX::XMFLOAT3 o = m_objectPos[m_activeObject];
     DirectX::XMFLOAT3 dir = (axis == 0) ? DirectX::XMFLOAT3(1, 0, 0) : (axis == 1) ? DirectX::XMFLOAT3(0, 1, 0) : DirectX::XMFLOAT3(0, 0, 1);
 
+    // Stable drag: intersect the mouse ray with a plane that contains the axis line and is as
+    // perpendicular to the camera view direction as possible.
     DirectX::XMVECTOR RO = DirectX::XMLoadFloat3(&ro);
     DirectX::XMVECTOR RD = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&rd));
     DirectX::XMVECTOR O = DirectX::XMLoadFloat3(&o);
-    DirectX::XMVECTOR D = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&dir));
+    DirectX::XMVECTOR A = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&dir));
 
-    DirectX::XMVECTOR w0 = DirectX::XMVectorSubtract(RO, O);
-    float a = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, RD));
-    float b = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, D));
-    float c = DirectX::XMVectorGetX(DirectX::XMVector3Dot(D, D));
-    float d = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, w0));
-    float e = DirectX::XMVectorGetX(DirectX::XMVector3Dot(D, w0));
-    float denom = a * c - b * b;
+    DirectX::XMFLOAT3 camF = m_camera.Forward();
+    DirectX::XMVECTOR V = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&camF));
 
-    float u = 0.0f;
-    float t = 0.0f;
-    if (fabsf(denom) > 1e-6f) {
-        u = (b * e - c * d) / denom;
-        t = (a * e - b * d) / denom;
+    // n = axis x (view x axis)  == view projected perpendicular to axis (up to scale).
+    DirectX::XMVECTOR n = DirectX::XMVector3Cross(A, DirectX::XMVector3Cross(V, A));
+    float nLenSq = DirectX::XMVectorGetX(DirectX::XMVector3Dot(n, n));
+
+    if (nLenSq < 1e-8f) {
+        // View almost parallel to axis. Pick a fallback vector not parallel to the axis.
+        DirectX::XMVECTOR fallback = (fabsf(DirectX::XMVectorGetY(A)) < 0.9f) ? DirectX::XMVectorSet(0, 1, 0, 0) : DirectX::XMVectorSet(1, 0, 0, 0);
+        n = DirectX::XMVector3Cross(A, DirectX::XMVector3Cross(fallback, A));
+        nLenSq = DirectX::XMVectorGetX(DirectX::XMVector3Dot(n, n));
+        if (nLenSq < 1e-8f) return false;
     }
 
+    n = DirectX::XMVector3Normalize(n);
+
+    float denom = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, n));
+    if (fabsf(denom) < 1e-6f) return false;
+
+    float u = DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVectorSubtract(O, RO), n)) / denom;
     if (u < 0.0f) u = 0.0f;
+
+    DirectX::XMVECTOR P = DirectX::XMVectorAdd(RO, DirectX::XMVectorScale(RD, u));
+    float t = DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVectorSubtract(P, O), A));
     outTOnAxis = t;
     return true;
 }
@@ -678,21 +691,44 @@ void App::UpdateGizmo() {
     if (!m_engine) return;
     if (m_activeObject >= m_objectCount) return;
 
+    // Hover highlight (when not dragging and not in RMB-fly).
+    if (!m_gizmoDragging && !m_input.rmbDown) {
+        m_gizmoHotAxis = -1;
+        int axis = -1;
+        float t = 0.0f;
+        if (GizmoPickAxis(m_input.mouseX, m_input.mouseY, axis, t)) {
+            m_gizmoHotAxis = axis;
+        }
+    } else {
+        m_gizmoHotAxis = -1;
+    }
+
     // 1) Render gizmo (always at active object's position).
     {
         Vertex gizmo[kGizmoVertexCount] = {};
 
         DirectX::XMFLOAT3 o = m_objectPos[m_activeObject];
-        const float len = 1.25f;
+        const float len = kGizmoAxisLen;
 
-        gizmo[0] = { o, DirectX::XMFLOAT4(1, 0, 0, 1) };
-        gizmo[1] = { DirectX::XMFLOAT3(o.x + len, o.y, o.z), DirectX::XMFLOAT4(1, 0, 0, 1) };
+        auto hotColor = DirectX::XMFLOAT4(1, 1, 1, 1);
+        auto activeColor = DirectX::XMFLOAT4(1, 1, 0, 1);
 
-        gizmo[2] = { o, DirectX::XMFLOAT4(0, 1, 0, 1) };
-        gizmo[3] = { DirectX::XMFLOAT3(o.x, o.y + len, o.z), DirectX::XMFLOAT4(0, 1, 0, 1) };
+        DirectX::XMFLOAT4 colX = DirectX::XMFLOAT4(1, 0, 0, 1);
+        DirectX::XMFLOAT4 colY = DirectX::XMFLOAT4(0, 1, 0, 1);
+        DirectX::XMFLOAT4 colZ = DirectX::XMFLOAT4(0.2f, 0.5f, 1, 1);
 
-        gizmo[4] = { o, DirectX::XMFLOAT4(0.2f, 0.5f, 1, 1) };
-        gizmo[5] = { DirectX::XMFLOAT3(o.x, o.y, o.z + len), DirectX::XMFLOAT4(0.2f, 0.5f, 1, 1) };
+        if (m_gizmoActiveAxis == 0) colX = activeColor; else if (m_gizmoHotAxis == 0) colX = hotColor;
+        if (m_gizmoActiveAxis == 1) colY = activeColor; else if (m_gizmoHotAxis == 1) colY = hotColor;
+        if (m_gizmoActiveAxis == 2) colZ = activeColor; else if (m_gizmoHotAxis == 2) colZ = hotColor;
+
+        gizmo[0] = { o, colX };
+        gizmo[1] = { DirectX::XMFLOAT3(o.x + len, o.y, o.z), colX };
+
+        gizmo[2] = { o, colY };
+        gizmo[3] = { DirectX::XMFLOAT3(o.x, o.y + len, o.z), colY };
+
+        gizmo[4] = { o, colZ };
+        gizmo[5] = { DirectX::XMFLOAT3(o.x, o.y, o.z + len), colZ };
 
         m_engine->UpdateGizmoVertices(gizmo, kGizmoVertexCount, m_hwnd);
     }
@@ -704,7 +740,9 @@ void App::UpdateGizmo() {
         if (GizmoPickAxis(m_input.mouseX, m_input.mouseY, axis, t0)) {
             m_gizmoActiveAxis = axis;
             m_gizmoDragging = true;
-            m_gizmoDragT0 = t0;
+            // Use the same t-computation as the drag loop to avoid a 1-frame jump.
+            if (!GizmoComputeTOnAxis(m_gizmoActiveAxis, m_input.mouseX, m_input.mouseY, m_gizmoDragT0))
+                m_gizmoDragT0 = t0;
             m_gizmoStartPos = m_objectPos[m_activeObject];
         }
     }
@@ -725,6 +763,12 @@ void App::UpdateGizmo() {
 
     // 4) End drag.
     if (m_gizmoDragging && m_input.lmbReleased) {
+        m_gizmoDragging = false;
+        m_gizmoActiveAxis = -1;
+    }
+
+    // RMB-fly should cancel gizmo drag immediately.
+    if (m_gizmoDragging && m_input.rmbPressed) {
         m_gizmoDragging = false;
         m_gizmoActiveAxis = -1;
     }

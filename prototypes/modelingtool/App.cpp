@@ -87,7 +87,11 @@ void App::Update(float dt) {
             DirectX::XMFLOAT3 pos = m_camera.Position();
             DirectX::XMFLOAT3 fwd = m_camera.Forward();
             m_orbitDistance = (std::max)(0.25f, m_orbitDistance);
-            m_viewPivot = DirectX::XMFLOAT3(pos.x + fwd.x * m_orbitDistance, pos.y + fwd.y * m_orbitDistance, pos.z + fwd.z * m_orbitDistance);
+            m_viewPivot = DirectX::XMFLOAT3(
+                pos.x + fwd.x * m_orbitDistance,
+                pos.y + fwd.y * m_orbitDistance,
+                pos.z + fwd.z * m_orbitDistance
+            );
         }
 
     }
@@ -96,7 +100,6 @@ void App::Update(float dt) {
         int dy = m_input.mouseY - m_lastCameraMouse.y;
 
         m_camera.AddYawPitch(dx * m_camera.mouseSensitivity, dy * m_camera.mouseSensitivity);
-
         m_lastCameraMouse = { m_input.mouseX, m_input.mouseY };
     }
 

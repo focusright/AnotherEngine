@@ -54,8 +54,8 @@ private:
         bool mmbPressed = false;
         bool mmbReleased = false;
 
-        bool rmbDown = false;
-        bool rmbPressed = false;
+        bool rmbDown = false;    //is the button currently held?
+        bool rmbPressed = false; //did the button transition from up -> down THIS frame?
         bool rmbReleased = false;
 
         int wheelDelta = 0;

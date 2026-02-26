@@ -118,14 +118,14 @@ void App::Update(float dt) {
         float dzp = pos.z - m_viewPivot.z;
         m_orbitDistance = (std::max)(0.25f, std::sqrt(dxp * dxp + dyp * dyp + dzp * dzp));
     }
-    if (m_input.mmbDown && !m_isDragging) {
+    if (m_input.mmbDown && !m_isDragging) { //Continue orbit/pan only while holding MMB, do not orbit while dragging a gizmo
         int dx = m_input.mouseX - m_lastCameraMouse.x;
         int dy = m_input.mouseY - m_lastCameraMouse.y;
 
         bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-        if (shiftDown) {
+        if (shiftDown) { //Pan
             DirectX::XMFLOAT3 right = m_camera.Right();
-            DirectX::XMFLOAT3 up = DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f);
+            DirectX::XMFLOAT3 up = m_camera.Up();
 
             float scale = m_camera.panSpeed * m_orbitDistance;
             DirectX::XMFLOAT3 delta = DirectX::XMFLOAT3(
@@ -139,7 +139,7 @@ void App::Update(float dt) {
             m_camera.SetPosition(pos);
 
             m_viewPivot.x += delta.x; m_viewPivot.y += delta.y; m_viewPivot.z += delta.z;
-        } else {
+        } else { //Orbit
             m_camera.AddYawPitch(dx * m_camera.mouseSensitivity, dy * m_camera.mouseSensitivity);
 
             DirectX::XMFLOAT3 f = m_camera.Forward();

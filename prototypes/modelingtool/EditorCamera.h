@@ -25,6 +25,7 @@ public:
 
     DirectX::XMFLOAT3 Forward() const;
     DirectX::XMFLOAT3 Right() const;
+    DirectX::XMFLOAT3 Up() const;
 
     float Yaw() const { return m_yaw; }
     float Pitch() const { return m_pitch; }

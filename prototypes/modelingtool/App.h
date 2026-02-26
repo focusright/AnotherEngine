@@ -70,7 +70,7 @@ private:
 
     InputState m_input;
 
-    bool m_isDragging = false;
+    bool m_isDragging = false; //dragging a gizmo
     int m_selectedVertex = -1;
     POINT m_lastMousePos = { 0, 0 };
     HWND m_hwnd = nullptr;

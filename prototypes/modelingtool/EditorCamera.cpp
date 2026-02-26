@@ -163,6 +163,14 @@ XMFLOAT3 EditorCamera::Right() const {
     return r;
 }
 
+XMFLOAT3 EditorCamera::Up() const {
+    XMMATRIX rot = XMMatrixRotationRollPitchYaw(m_pitch, m_yaw, 0.0f);
+    XMVECTOR upV = XMVector3TransformNormal(XMVectorSet(0, 1, 0, 0), rot);
+    XMFLOAT3 u;
+    XMStoreFloat3(&u, upV);
+    return u;
+}
+
 void EditorCamera::BuildRayFromScreen(float screenX, float screenY, XMFLOAT3& outOrigin, XMFLOAT3& outDir) const {
     float x = (2.0f * screenX / m_viewW) - 1.0f;
     float y = 1.0f - (2.0f * screenY / m_viewH);

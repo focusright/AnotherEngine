@@ -221,15 +221,6 @@ void InitializeDirect3D() {
         return;
     }
 
-    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-    swapChainDesc.BufferCount = 2;
-    swapChainDesc.Width = WINDOW_WIDTH;
-    swapChainDesc.Height = WINDOW_HEIGHT;
-    swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    swapChainDesc.SampleDesc.Count = 1;
-
     if (!g_gfx.CreateSwapChain(factory.Get(), g_hwnd, WINDOW_WIDTH, WINDOW_HEIGHT, DXGI_FORMAT_R8G8B8A8_UNORM, 2)) {
         MessageBox(g_hwnd, L"CreateSwapChain failed.", L"Error", MB_OK);
         PostQuitMessage(0);

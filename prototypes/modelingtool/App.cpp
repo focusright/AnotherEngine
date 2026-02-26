@@ -199,11 +199,7 @@ void App::Update(float dt) {
     }
 
     // Focus.
-    if (m_input.fPressed && !m_isDragging) {
-        FocusCamera();
-    }
-
-
+    if (m_input.fPressed && !m_isDragging) { FocusCamera(); }
 
     // Object move (when not in RMB-fly mode).
     // Layer note: this is "app/input"... no D3D12 layer yet; we just update transforms.
@@ -271,9 +267,9 @@ void App::Update(float dt) {
 
     for (uint32_t i = 0; i < m_objectCount; ++i) {
         XMMATRIX S = XMMatrixScaling(m_objectScale[i].x, m_objectScale[i].y, m_objectScale[i].z);
-XMMATRIX R = XMMatrixRotationRollPitchYaw(m_objectRot[i].x, m_objectRot[i].y, m_objectRot[i].z);
-XMMATRIX T = XMMatrixTranslation(m_objectPos[i].x, m_objectPos[i].y, m_objectPos[i].z);
-XMMATRIX W = S * R * T;
+        XMMATRIX R = XMMatrixRotationRollPitchYaw(m_objectRot[i].x, m_objectRot[i].y, m_objectRot[i].z);
+        XMMATRIX T = XMMatrixTranslation(m_objectPos[i].x, m_objectPos[i].y, m_objectPos[i].z);
+        XMMATRIX W = S * R * T; //W = World matrix for this object
         XMFLOAT4X4 world;
         XMStoreFloat4x4(&world, W);
         m_engine->SetObjectWorld(i, world);

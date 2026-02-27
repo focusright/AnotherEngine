@@ -570,7 +570,7 @@ bool App::LoadSceneAem(const wchar_t* path) {
     return true;
 }
 
-bool App::GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis) {
+bool App::GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis) { //outAxis: 0=X, 1=Y, 2=Z. outTOnAxis: "raw parameter t along the infinite axis line" at the closest point
     // Pick the closest axis by ray-to-segment distance.
     // We use a conservative threshold in world units.
     DirectX::XMFLOAT3 ro, rd;
@@ -579,12 +579,12 @@ bool App::GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis)
     DirectX::XMFLOAT3 o = m_objectPos[m_activeObject];
     const float axisLen = kGizmoAxisLen;
 
-    auto testAxis = [&](int axis, const DirectX::XMFLOAT3& dir, float& outTRaw, float& outDistSq) {
+    auto testAxis = [&](int axis, const DirectX::XMFLOAT3& dir, float& outTRaw, float& outDistSq) { //outTRaw: parameter t on the infinite axis line. outDistSq: squared distance between the mouse ray and the clamped segment
         // Segment [o, o + dir*axisLen]
-        DirectX::XMVECTOR RO = DirectX::XMLoadFloat3(&ro);
-        DirectX::XMVECTOR RD = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&rd));
-        DirectX::XMVECTOR O = DirectX::XMLoadFloat3(&o);
-        DirectX::XMVECTOR D = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&dir));
+        DirectX::XMVECTOR RO = DirectX::XMLoadFloat3(&ro); // Ray origin
+        DirectX::XMVECTOR RD = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&rd)); // Ray direction
+        DirectX::XMVECTOR O = DirectX::XMLoadFloat3(&o); // Object Origin
+        DirectX::XMVECTOR D = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&dir)); // Axis direction
         DirectX::XMVECTOR P1 = O;
         DirectX::XMVECTOR P2 = DirectX::XMVectorAdd(O, DirectX::XMVectorScale(D, axisLen));
 

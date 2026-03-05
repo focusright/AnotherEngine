@@ -31,6 +31,8 @@ ComPtr<ID3D12RootSignature> g_rootSignature;
 ComPtr<ID3D12PipelineState> g_pipelineState;
 ComPtr<ID3D12PipelineState> g_pipelineStateLine;
 ComPtr<ID3D12PipelineState> g_pipelineStateLineOccluded;
+ComPtr<ID3D12PipelineState> g_pipelineStateGizmo;
+ComPtr<ID3D12PipelineState> g_pipelineStateGizmoOccluded;
 ComPtr<ID3D12Resource> g_vertexBuffer;
 ComPtr<ID3D12Resource> g_vertexBufferGrid;
 uint32_t g_gridVertexCount = 0;
@@ -106,7 +108,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
     
     g_editorCamera.SetLens(DirectX::XM_PIDIV4, 0.1f, 1000.0f);
     g_engine.SetGraphicsDevice(&g_gfx);
-    g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_pipelineStateLine.Get(), g_pipelineStateLineOccluded.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), g_vertexBufferGrid.Get(), g_gridVertexCount, WINDOW_WIDTH, WINDOW_HEIGHT);
+    g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_pipelineStateLine.Get(), g_pipelineStateLineOccluded.Get(), g_pipelineStateGizmo.Get(), g_pipelineStateGizmoOccluded.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), g_vertexBufferGrid.Get(), g_gridVertexCount, WINDOW_WIDTH, WINDOW_HEIGHT);
     g_engine.SetObjectCount(2);
     g_app.SetWindow(g_hwnd);
     g_app.SetEngine(&g_engine);
@@ -368,6 +370,24 @@ void CreatePipelineState() {
     if (FAILED(g_device->CreateGraphicsPipelineState(&linePsoOcc, IID_PPV_ARGS(&g_pipelineStateLineOccluded)))) {
         return;
     }
+
+    //Triangle list PSO for the translate gizmo, which is drawn as 3 thick arrows (triangles) on top of the grid.
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC gizmoPso = psoDesc;
+    gizmoPso.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    gizmoPso.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    gizmoPso.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+    gizmoPso.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+    if (FAILED(g_device->CreateGraphicsPipelineState(&gizmoPso, IID_PPV_ARGS(&g_pipelineStateGizmo)))) {
+        return;
+    }
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC gizmoPsoOcc = gizmoPso;
+    gizmoPsoOcc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER;
+
+    if (FAILED(g_device->CreateGraphicsPipelineState(&gizmoPsoOcc, IID_PPV_ARGS(&g_pipelineStateGizmoOccluded)))) {
+        return;
+    }
 }
 
 void CreateGridVertexBuffer() {
@@ -380,7 +400,7 @@ void CreateGridVertexBuffer() {
     const uint32_t linesPerDir = uint32_t(2 * N + 1);
     const uint32_t lineCount = linesPerDir * 2; // X-parallel + Z-parallel
     const uint32_t baseGridVertexCount = lineCount * 2;
-    const uint32_t gizmoVertexCount = 6; // 3 axes * 2 verts (written each frame)
+    const uint32_t gizmoVertexCount = 18; // 3 axes * (2 triangles * 3 verts)
     g_gridVertexCount = baseGridVertexCount + gizmoVertexCount;
 
     Vertex* verts = new Vertex[g_gridVertexCount];

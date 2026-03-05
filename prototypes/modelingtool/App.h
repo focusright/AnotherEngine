@@ -95,7 +95,7 @@ private:
     DirectX::XMFLOAT4 m_objectColor[kMaxObjects] = {}; // per-object tint (saved)
 
     // Translate gizmo (world-space)
-    static const uint32_t kGizmoVertexCount = 6; // 3 axes * 2 verts
+    static const uint32_t kGizmoVertexCount = 18; // 3 axes * (2 triangles * 3 verts) = 18
     static constexpr float kGizmoAxisLen = 1.25f;
     static constexpr float kGizmoPickThresh = 0.15f;
     int m_gizmoActiveAxis = -1; // 0=X,1=Y,2=Z

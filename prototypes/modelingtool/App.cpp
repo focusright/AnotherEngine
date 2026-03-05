@@ -726,14 +726,88 @@ void App::UpdateGizmo() {
         if (m_gizmoActiveAxis == 1) colY = activeColor; else if (m_gizmoHotAxis == 1) colY = hotColor;
         if (m_gizmoActiveAxis == 2) colZ = activeColor; else if (m_gizmoHotAxis == 2) colZ = hotColor;
 
-        gizmo[0] = { o, colX };
-        gizmo[1] = { DirectX::XMFLOAT3(o.x + len, o.y, o.z), colX };
+        // Screen thickness control (in pixels)
+        const float thicknessPx = 3.0f;
 
-        gizmo[2] = { o, colY };
-        gizmo[3] = { DirectX::XMFLOAT3(o.x, o.y + len, o.z), colY };
+        // Viewport height in pixels
+        RECT rc;
+        GetClientRect(m_hwnd, &rc);
+        float viewH = float(rc.bottom - rc.top);
+        if (viewH < 1.0f) viewH = 1.0f;
 
-        gizmo[4] = { o, colZ };
-        gizmo[5] = { DirectX::XMFLOAT3(o.x, o.y, o.z + len), colZ };
+        DirectX::XMFLOAT3 camPos = m_camera.Position();
+        DirectX::XMFLOAT3 camFwd = m_camera.Forward();
+        DirectX::XMFLOAT3 camRight = m_camera.Right();
+
+        auto addAxisQuad = [&](int baseIndex, const DirectX::XMFLOAT3& axisDir, const DirectX::XMFLOAT4& col) {
+            // Segment endpoints
+            DirectX::XMFLOAT3 p0 = o;
+            DirectX::XMFLOAT3 p1 = DirectX::XMFLOAT3(o.x + axisDir.x * len, o.y + axisDir.y * len, o.z + axisDir.z * len);
+
+            // Depth at each endpoint along camera forward
+            DirectX::XMFLOAT3 toP0 = DirectX::XMFLOAT3(p0.x - camPos.x, p0.y - camPos.y, p0.z - camPos.z);
+            DirectX::XMFLOAT3 toP1 = DirectX::XMFLOAT3(p1.x - camPos.x, p1.y - camPos.y, p1.z - camPos.z);
+
+            float z0 = toP0.x * camFwd.x + toP0.y * camFwd.y + toP0.z * camFwd.z;
+            float z1 = toP1.x * camFwd.x + toP1.y * camFwd.y + toP1.z * camFwd.z;
+
+            if (z0 < 0.05f) z0 = 0.05f;
+            if (z1 < 0.05f) z1 = 0.05f;
+
+            // Convert desired pixel thickness into world thickness at each endpoint
+            float tanHalfFov = std::tan(m_camera.FovY() * 0.5f);
+
+            float worldThickness0 = thicknessPx * (2.0f * z0 * tanHalfFov) / viewH;
+            float worldThickness1 = thicknessPx * (2.0f * z1 * tanHalfFov) / viewH;
+
+            float halfW0 = worldThickness0 * 0.5f;
+            float halfW1 = worldThickness1 * 0.5f;
+
+            // Compute side direction = axisDir x cameraForward
+            DirectX::XMFLOAT3 sideDir = DirectX::XMFLOAT3(
+                axisDir.y * camFwd.z - axisDir.z * camFwd.y,
+                axisDir.z * camFwd.x - axisDir.x * camFwd.z,
+                axisDir.x * camFwd.y - axisDir.y * camFwd.x
+            );
+
+            float sideLen = std::sqrt(sideDir.x * sideDir.x + sideDir.y * sideDir.y + sideDir.z * sideDir.z);
+
+            // If axis nearly parallel to camera forward, fall back to camera right
+            if (sideLen < 1e-4f)
+            {
+                sideDir = camRight;
+                sideLen = std::sqrt(sideDir.x * sideDir.x + sideDir.y * sideDir.y + sideDir.z * sideDir.z);
+            }
+
+            // Normalize
+            sideDir.x /= sideLen;
+            sideDir.y /= sideLen;
+            sideDir.z /= sideLen;
+
+            // Scale separately for each endpoint (trapezoid)
+            DirectX::XMFLOAT3 side0 = DirectX::XMFLOAT3(sideDir.x * halfW0, sideDir.y * halfW0, sideDir.z * halfW0);
+            DirectX::XMFLOAT3 side1 = DirectX::XMFLOAT3(sideDir.x * halfW1, sideDir.y * halfW1, sideDir.z * halfW1);
+
+            // Quad corners
+            DirectX::XMFLOAT3 a = DirectX::XMFLOAT3(p0.x + side0.x, p0.y + side0.y, p0.z + side0.z);
+            DirectX::XMFLOAT3 b = DirectX::XMFLOAT3(p1.x + side1.x, p1.y + side1.y, p1.z + side1.z);
+            DirectX::XMFLOAT3 c = DirectX::XMFLOAT3(p1.x - side1.x, p1.y - side1.y, p1.z - side1.z);
+            DirectX::XMFLOAT3 d = DirectX::XMFLOAT3(p0.x - side0.x, p0.y - side0.y, p0.z - side0.z);
+
+            // Triangle 1
+            gizmo[baseIndex + 0] = { a, col };
+            gizmo[baseIndex + 1] = { b, col };
+            gizmo[baseIndex + 2] = { c, col };
+
+            // Triangle 2
+            gizmo[baseIndex + 3] = { a, col };
+            gizmo[baseIndex + 4] = { c, col };
+            gizmo[baseIndex + 5] = { d, col };
+        };
+
+        addAxisQuad(0, DirectX::XMFLOAT3(1, 0, 0), colX);
+        addAxisQuad(6, DirectX::XMFLOAT3(0, 1, 0), colY);
+        addAxisQuad(12, DirectX::XMFLOAT3(0, 0, 1), colZ);
 
         m_engine->UpdateGizmoVertices(gizmo, kGizmoVertexCount, m_hwnd);
     }

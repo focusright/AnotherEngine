@@ -29,6 +29,7 @@ public:
 
     float Yaw() const { return m_yaw; }
     float Pitch() const { return m_pitch; }
+    float FovY() const { return m_fovY; }
 
     // Ray from screen pixel into world (for picking/dragging).
     void BuildRayFromScreen(float screenX, float screenY, DirectX::XMFLOAT3& outOrigin, DirectX::XMFLOAT3& outDir) const;

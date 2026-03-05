@@ -4,20 +4,22 @@
 #include "EditableMesh.h"
 #include <DirectXMath.h>
 
-void Engine::SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12GraphicsCommandList* commandList, ID3D12RootSignature* rootSignature, ID3D12PipelineState* pipelineStateTriangles, ID3D12PipelineState* pipelineStateLines, ID3D12PipelineState* pipelineStateLinesOccluded, ID3D12Fence* fence, HANDLE fenceEvent, UINT64* fenceValue, ID3D12Resource* vertexBufferTetra, ID3D12Resource* vertexBufferGrid, uint32_t gridVertexCount, uint32_t width, uint32_t height) {
+void Engine::SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12GraphicsCommandList* commandList, ID3D12RootSignature* rootSignature, ID3D12PipelineState* pipelineStateTriangles, ID3D12PipelineState* pipelineStateLines, ID3D12PipelineState* pipelineStateLinesOccluded, ID3D12PipelineState* pipelineStateGizmo, ID3D12PipelineState* pipelineStateGizmoOccluded, ID3D12Fence* fence, HANDLE fenceEvent, UINT64* fenceValue, ID3D12Resource* vertexBufferTetra, ID3D12Resource* vertexBufferGrid, uint32_t gridVertexCount, uint32_t width, uint32_t height) {
     m_commandAllocator = commandAllocator;
     m_commandList = commandList;
     m_rootSignature = rootSignature;
     m_pipelineStateTriangles = pipelineStateTriangles;
     m_pipelineStateLines = pipelineStateLines;
     m_pipelineStateLinesOccluded = pipelineStateLinesOccluded;
+    m_pipelineStateGizmo = pipelineStateGizmo;
+    m_pipelineStateGizmoOccluded = pipelineStateGizmoOccluded;
     m_fence = fence;
     m_fenceEvent = fenceEvent;
     m_fenceValue = fenceValue;
     m_vertexBufferTetra = vertexBufferTetra;
     m_vertexBufferGrid = vertexBufferGrid;
     m_gridVertexCount = gridVertexCount;
-    m_gizmoVertexCount = 6;
+    m_gizmoVertexCount = 18;
     m_gridBaseVertexCount = (gridVertexCount >= m_gizmoVertexCount) ? (gridVertexCount - m_gizmoVertexCount) : gridVertexCount;
     m_width = width;
     m_height = height;
@@ -160,17 +162,17 @@ void Engine::PopulateCommandList() {
 
         uint32_t baseCount = (m_gridBaseVertexCount > 0 && m_gridBaseVertexCount <= m_gridVertexCount) ? m_gridBaseVertexCount : m_gridVertexCount;
         if ((baseCount + m_gizmoVertexCount) <= m_gridVertexCount) {
-            m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+            m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
             m_commandList->IASetVertexBuffers(0, 1, &gridVBV);
 
             // Pass 1: visible part (depth func LESS_EQUAL) at full brightness.
-            m_commandList->SetPipelineState(m_pipelineStateLines);
+            m_commandList->SetPipelineState(m_pipelineStateGizmo);
             DirectX::XMFLOAT4 tintVisible = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
             m_commandList->SetGraphicsRoot32BitConstants(1, 4, &tintVisible, 0);
             m_commandList->DrawInstanced(m_gizmoVertexCount, 1, baseCount, 0);
 
             // Pass 2: occluded part only (depth func GREATER) drawn darker.
-            m_commandList->SetPipelineState(m_pipelineStateLinesOccluded);
+            m_commandList->SetPipelineState(m_pipelineStateGizmoOccluded);
             DirectX::XMFLOAT4 tintOccluded = DirectX::XMFLOAT4(0.35f, 0.35f, 0.35f, 1.0f);
             m_commandList->SetGraphicsRoot32BitConstants(1, 4, &tintOccluded, 0);
             m_commandList->DrawInstanced(m_gizmoVertexCount, 1, baseCount, 0);

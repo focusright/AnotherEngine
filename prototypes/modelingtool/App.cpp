@@ -757,13 +757,13 @@ void App::UpdateGizmo() {
             // Convert desired pixel thickness into world thickness at each endpoint
             float tanHalfFov = std::tan(m_camera.FovY() * 0.5f);
 
-            float worldThickness0 = thicknessPx * (2.0f * z0 * tanHalfFov) / viewH;
-            float worldThickness1 = thicknessPx * (2.0f * z1 * tanHalfFov) / viewH;
+            float worldThickness0 = thicknessPx * (2.0f * z0 * tanHalfFov) / viewH; //The higher the depth (z) the smaller the world thickness
+            float worldThickness1 = thicknessPx * (2.0f * z1 * tanHalfFov) / viewH; //This creates a perspective effect where the gizmo gets thinner as it extends into the distance, a trapezoid.
 
-            float halfW0 = worldThickness0 * 0.5f;
+            float halfW0 = worldThickness0 * 0.5f; //Using halfW0 at p0 and halfW1 at p1 makes a trapezoid that keeps thickness consistent along the axis.
             float halfW1 = worldThickness1 * 0.5f;
 
-            // Compute side direction = axisDir x cameraForward
+            // Compute side direction = cross(axisDir, camFwd)
             DirectX::XMFLOAT3 sideDir = DirectX::XMFLOAT3(
                 axisDir.y * camFwd.z - axisDir.z * camFwd.y,
                 axisDir.z * camFwd.x - axisDir.x * camFwd.z,
@@ -773,8 +773,7 @@ void App::UpdateGizmo() {
             float sideLen = std::sqrt(sideDir.x * sideDir.x + sideDir.y * sideDir.y + sideDir.z * sideDir.z);
 
             // If axis nearly parallel to camera forward, fall back to camera right
-            if (sideLen < 1e-4f)
-            {
+            if (sideLen < 1e-4f) {
                 sideDir = camRight;
                 sideLen = std::sqrt(sideDir.x * sideDir.x + sideDir.y * sideDir.y + sideDir.z * sideDir.z);
             }

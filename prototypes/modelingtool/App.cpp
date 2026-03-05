@@ -648,6 +648,12 @@ bool App::GizmoComputeTOnAxis(int axis, int mouseX, int mouseY, float& outTOnAxi
     m_camera.BuildRayFromScreen(float(mouseX), float(mouseY), ro, rd);
 
     DirectX::XMFLOAT3 o = m_objectPos[m_activeObject];
+
+    // While dragging, keep the axis origin fixed to the start-of-drag position,
+    // otherwise 't' is measured against a moving origin and the object will flicker.
+    if (m_gizmoDragging && m_gizmoActiveAxis == axis)
+        o = m_gizmoStartPos;
+
     DirectX::XMFLOAT3 dir = (axis == 0) ? DirectX::XMFLOAT3(1, 0, 0) : (axis == 1) ? DirectX::XMFLOAT3(0, 1, 0) : DirectX::XMFLOAT3(0, 0, 1);
 
     // Stable drag: intersect the mouse ray with a plane that contains the axis line and is as
@@ -739,10 +745,12 @@ void App::UpdateGizmo() {
         if (GizmoPickAxis(m_input.mouseX, m_input.mouseY, axis, t0)) {
             m_gizmoActiveAxis = axis;
             m_gizmoDragging = true;
+
+            m_gizmoStartPos = m_objectPos[m_activeObject];
+
             // Use the same t-computation as the drag loop to avoid a 1-frame jump.
             if (!GizmoComputeTOnAxis(m_gizmoActiveAxis, m_input.mouseX, m_input.mouseY, m_gizmoDragT0))
                 m_gizmoDragT0 = t0;
-            m_gizmoStartPos = m_objectPos[m_activeObject];
         }
     }
 

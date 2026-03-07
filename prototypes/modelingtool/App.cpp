@@ -951,14 +951,10 @@ void App::UpdateGizmo() {
             m_gizmoDragging = true;
 
             if (m_selectedVertex != -1) {
-                m_gizmoStartPos = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+                DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+                m_gizmoStartPos = LocalVertexToWorld(p);
             } else {
-                if (m_selectedVertex != -1) {
-                    DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
-                    m_gizmoStartPos = LocalVertexToWorld(p);
-                } else {
-                    m_gizmoStartPos = m_objectPos[m_activeObject];
-                }
+                m_gizmoStartPos = m_objectPos[m_activeObject];
             }
 
             // Use the same t-computation as the drag loop to avoid a 1-frame jump.
@@ -967,7 +963,7 @@ void App::UpdateGizmo() {
         }
     }
 
-    // 3) While dragging: update object position along axis.
+    // 3) While dragging: update object position or vertex position.
     if (m_gizmoDragging && m_input.lmbDown && m_gizmoActiveAxis != -1) {
         float t = 0.0f;
         if (GizmoComputeTOnAxis(m_gizmoActiveAxis, m_input.mouseX, m_input.mouseY, t)) {

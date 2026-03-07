@@ -688,7 +688,8 @@ bool App::GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis)
     DirectX::XMFLOAT3 o;
 
     if (m_selectedVertex != -1) {
-        o = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+        DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+        o = LocalVertexToWorld(p);
     } else {
         o = m_objectPos[m_activeObject];
     }
@@ -766,15 +767,15 @@ bool App::GizmoComputeTOnAxis(int axis, int mouseX, int mouseY, float& outTOnAxi
     DirectX::XMFLOAT3 o;
 
     if (m_selectedVertex != -1) {
-        o = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+        DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+        o = LocalVertexToWorld(p);
     } else {
         o = m_objectPos[m_activeObject];
     }
 
     // While dragging, keep the axis origin fixed to the start-of-drag position,
     // otherwise 't' is measured against a moving origin and the object will flicker.
-    if (m_gizmoDragging && m_gizmoActiveAxis == axis)
-        o = m_gizmoStartPos;
+    if (m_gizmoDragging && m_gizmoActiveAxis == axis) o = m_gizmoStartPos;
 
     DirectX::XMFLOAT3 dir = (axis == 0) ? DirectX::XMFLOAT3(1, 0, 0) : (axis == 1) ? DirectX::XMFLOAT3(0, 1, 0) : DirectX::XMFLOAT3(0, 0, 1);
 
@@ -837,7 +838,8 @@ void App::UpdateGizmo() {
         DirectX::XMFLOAT3 o;
 
         if (m_selectedVertex != -1) {
-            o = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+            DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+            o = LocalVertexToWorld(p);
         } else {
             o = m_objectPos[m_activeObject];
         }
@@ -952,7 +954,8 @@ void App::UpdateGizmo() {
                 m_gizmoStartPos = m_editMesh->GetVertex((VertexID)m_selectedVertex);
             } else {
                 if (m_selectedVertex != -1) {
-                    m_gizmoStartPos = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+                    DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+                    m_gizmoStartPos = LocalVertexToWorld(p);
                 } else {
                     m_gizmoStartPos = m_objectPos[m_activeObject];
                 }
@@ -970,13 +973,16 @@ void App::UpdateGizmo() {
         if (GizmoComputeTOnAxis(m_gizmoActiveAxis, m_input.mouseX, m_input.mouseY, t)) {
             float dt = t - m_gizmoDragT0;
             DirectX::XMFLOAT3 axisDir = (m_gizmoActiveAxis == 0) ? DirectX::XMFLOAT3(1, 0, 0) : (m_gizmoActiveAxis == 1) ? DirectX::XMFLOAT3(0, 1, 0) : DirectX::XMFLOAT3(0, 0, 1);
+
             DirectX::XMFLOAT3 newPos(
                 m_gizmoStartPos.x + axisDir.x * dt,
                 m_gizmoStartPos.y + axisDir.y * dt,
                 m_gizmoStartPos.z + axisDir.z * dt
             );
+
             if (m_selectedVertex != -1) {
-                m_editMesh->SetVertex((VertexID)m_selectedVertex, newPos);
+                DirectX::XMFLOAT3 localPos = WorldPointToLocal(newPos);
+                m_editMesh->SetVertex((VertexID)m_selectedVertex, localPos);
                 m_renderMesh->dirty = true;
             } else {
                 m_objectPos[m_activeObject] = newPos;

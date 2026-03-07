@@ -446,23 +446,30 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 int App::HitTestVertex(int mouseX, int mouseY) {
     if (!m_hwnd) return -1;
 
-    float wx0 = 0.0f, wy0 = 0.0f;
-    float wx1 = 0.0f, wy1 = 0.0f;
-
-    if (!ScreenToWorldOnZPlane(mouseX, mouseY, wx0, wy0)) return -1;
-    if (!ScreenToWorldOnZPlane(mouseX + 10, mouseY, wx1, wy1)) return -1;
-
-    float hitRadius = sqrtf((wx1 - wx0) * (wx1 - wx0) + (wy1 - wy0) * (wy1 - wy0));
+    float bestDistSq = 1.0e30f;
+    int bestVertex = -1;
+    const float pickRadiusPx = 14.0f;
+    const float pickRadiusSq = pickRadiusPx * pickRadiusPx;
 
     for (int i = 0; i < 4; ++i) {
         DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)i);
-        float dx = wx0 - p.x;
-        float dy = wy0 - p.y;
-        float d = sqrtf(dx * dx + dy * dy);
-        if (d < hitRadius) { return i; }
+        DirectX::XMFLOAT3 pw = LocalVertexToWorld(p);
+
+        float sx = 0.0f;
+        float sy = 0.0f;
+        if (!WorldToScreen(pw, sx, sy)) continue;
+
+        float dx = sx - float(mouseX);
+        float dy = sy - float(mouseY);
+        float distSq = dx * dx + dy * dy;
+
+        if (distSq <= pickRadiusSq && distSq < bestDistSq) {
+            bestDistSq = distSq;
+            bestVertex = i;
+        }
     }
 
-    return -1;
+    return bestVertex;
 }
 
 bool App::ScreenToWorldOnZPlane(int screenX, int screenY, float& worldX, float& worldY) {
@@ -476,6 +483,92 @@ bool App::ScreenToWorldOnZPlane(int screenX, int screenY, float& worldX, float& 
 
     worldX = ro.x + rd.x * t;
     worldY = ro.y + rd.y * t;
+    return true;
+}
+
+DirectX::XMFLOAT3 App::LocalVertexToWorld(const DirectX::XMFLOAT3& p) const {
+    if (m_activeObject >= m_objectCount) return p;
+
+    DirectX::XMMATRIX S = DirectX::XMMatrixScaling(
+        m_objectScale[m_activeObject].x,
+        m_objectScale[m_activeObject].y,
+        m_objectScale[m_activeObject].z
+    );
+    DirectX::XMMATRIX R = DirectX::XMMatrixRotationRollPitchYaw(
+        m_objectRot[m_activeObject].x,
+        m_objectRot[m_activeObject].y,
+        m_objectRot[m_activeObject].z
+    );
+    DirectX::XMMATRIX T = DirectX::XMMatrixTranslation(
+        m_objectPos[m_activeObject].x,
+        m_objectPos[m_activeObject].y,
+        m_objectPos[m_activeObject].z
+    );
+
+    DirectX::XMMATRIX W = S * R * T;
+
+    DirectX::XMVECTOR v = DirectX::XMVectorSet(p.x, p.y, p.z, 1.0f);
+    DirectX::XMVECTOR r = DirectX::XMVector3TransformCoord(v, W);
+
+    DirectX::XMFLOAT3 out;
+    DirectX::XMStoreFloat3(&out, r);
+    return out;
+}
+
+DirectX::XMFLOAT3 App::WorldPointToLocal(const DirectX::XMFLOAT3& p) const {
+    if (m_activeObject >= m_objectCount) return p;
+
+    DirectX::XMMATRIX S = DirectX::XMMatrixScaling(
+        m_objectScale[m_activeObject].x,
+        m_objectScale[m_activeObject].y,
+        m_objectScale[m_activeObject].z
+    );
+    DirectX::XMMATRIX R = DirectX::XMMatrixRotationRollPitchYaw(
+        m_objectRot[m_activeObject].x,
+        m_objectRot[m_activeObject].y,
+        m_objectRot[m_activeObject].z
+    );
+    DirectX::XMMATRIX T = DirectX::XMMatrixTranslation(
+        m_objectPos[m_activeObject].x,
+        m_objectPos[m_activeObject].y,
+        m_objectPos[m_activeObject].z
+    );
+
+    DirectX::XMMATRIX W = S * R * T;
+    DirectX::XMMATRIX invW = DirectX::XMMatrixInverse(nullptr, W);
+
+    DirectX::XMVECTOR v = DirectX::XMVectorSet(p.x, p.y, p.z, 1.0f);
+    DirectX::XMVECTOR r = DirectX::XMVector3TransformCoord(v, invW);
+
+    DirectX::XMFLOAT3 out;
+    DirectX::XMStoreFloat3(&out, r);
+    return out;
+}
+
+bool App::WorldToScreen(const DirectX::XMFLOAT3& worldPos, float& outScreenX, float& outScreenY) const {
+    if (!m_hwnd) return false;
+
+    RECT rc;
+    GetClientRect(m_hwnd, &rc);
+
+    float width = float(rc.right - rc.left);
+    float height = float(rc.bottom - rc.top);
+
+    if (width <= 0.0f || height <= 0.0f) return false;
+
+    DirectX::XMMATRIX VP = DirectX::XMLoadFloat4x4(&m_camera.ViewProj());
+    DirectX::XMVECTOR p = DirectX::XMVectorSet(worldPos.x, worldPos.y, worldPos.z, 1.0f);
+    DirectX::XMVECTOR clip = DirectX::XMVector4Transform(p, VP);
+
+    float w = DirectX::XMVectorGetW(clip);
+    if (fabsf(w) < 1e-6f) return false;
+    if (w <= 0.0f) return false;
+
+    float ndcX = DirectX::XMVectorGetX(clip) / w;
+    float ndcY = DirectX::XMVectorGetY(clip) / w;
+
+    outScreenX = (ndcX * 0.5f + 0.5f) * width;
+    outScreenY = (-ndcY * 0.5f + 0.5f) * height;
     return true;
 }
 
@@ -516,7 +609,6 @@ void App::FocusCamera() {
     m_viewPivot = c;
     m_orbitDistance = dist;
 }
-
 
 bool App::SaveSceneAem(const wchar_t* path) {
     // File format:

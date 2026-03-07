@@ -109,6 +109,9 @@ private:
     bool GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis);
     bool GizmoComputeTOnAxis(int axis, int mouseX, int mouseY, float& outTOnAxis);
     bool ScreenToWorldOnZPlane(int screenX, int screenY, float& worldX, float& worldY);
+    DirectX::XMFLOAT3 LocalVertexToWorld(const DirectX::XMFLOAT3& p) const;
+    DirectX::XMFLOAT3 WorldPointToLocal(const DirectX::XMFLOAT3& p) const;
+    bool WorldToScreen(const DirectX::XMFLOAT3& worldPos, float& outScreenX, float& outScreenY) const;
     void UpdateViewProj();
     void FocusCamera();
     EditorCamera* Cam() { return m_ctx.camera; }

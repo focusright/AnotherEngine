@@ -65,7 +65,9 @@ void App::Update(float dt) {
     if (!cam) return;
 
     if (!m_colorsInit) {
-        for (int i = 0; i < 3; ++i) { m_baseColors[i] = m_renderMesh->drawVertices[i].color; }
+        for (int i = 0; i < 12; ++i) {
+            m_baseColors[i] = m_renderMesh->drawVertices[i].color;
+        }
         m_colorsInit = true;
     }
 
@@ -219,18 +221,34 @@ void App::Update(float dt) {
         }
     }
 
-#if 0
-    // 1) On press: select a vertex
-    if (m_input.lmbPressed) {
-        m_selectedVertex = HitTestVertex(m_input.mouseX, m_input.mouseY);
-        m_isDragging = (m_selectedVertex != -1);
+    // 1) On press: select a vertex, unless we clicked a gizmo axis.
+    if (!m_input.rmbDown && m_input.lmbPressed && !m_gizmoDragging) {
+        int axis = -1;
+        float t0 = 0.0f;
 
-        for (int i = 0; i < 3; ++i) { m_renderMesh->drawVertices[i].color = m_baseColors[i]; }
-        if (m_selectedVertex != -1) { m_renderMesh->drawVertices[m_selectedVertex].color = DirectX::XMFLOAT4(1, 1, 1, 1); }
-        m_renderMesh->dirty = true;
+        if (!GizmoPickAxis(m_input.mouseX, m_input.mouseY, axis, t0)) {
+            m_selectedVertex = HitTestVertex(m_input.mouseX, m_input.mouseY);
+            m_isDragging = false;
+
+            for (int i = 0; i < 12; ++i) {
+                m_renderMesh->drawVertices[i].color = m_baseColors[i];
+            }
+
+            if (m_selectedVertex != -1) {
+                for (int i = 0; i < 12; ++i) {
+                    if ((int)m_renderMesh->drawToEdit[i] == m_selectedVertex) {
+                        m_renderMesh->drawVertices[i].color = DirectX::XMFLOAT4(1, 1, 1, 1);
+                    }
+                }
+            }
+
+            m_renderMesh->dirty = true;
+        }
     }
 
-    // 2) On release: stop dragging
+#if 0
+    // Old direct vertex drag on Z=0 plane.
+    // Keep disabled. Vertex movement should go through the gizmo now.
     if (m_input.lmbReleased) {
         m_isDragging = false;
         m_selectedVertex = -1;
@@ -239,7 +257,6 @@ void App::Update(float dt) {
         m_renderMesh->dirty = true;
     }
 
-    // 3) While dragging: move the vertex on Z=0 plane
     if (m_input.lmbDown && m_isDragging && m_selectedVertex != -1) {
         float worldX = 0.0f, worldY = 0.0f;
         if (ScreenToWorldOnZPlane(m_input.mouseX, m_input.mouseY, worldX, worldY)) {
@@ -437,12 +454,12 @@ int App::HitTestVertex(int mouseX, int mouseY) {
 
     float hitRadius = sqrtf((wx1 - wx0) * (wx1 - wx0) + (wy1 - wy0) * (wy1 - wy0));
 
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 4; ++i) {
         DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)i);
         float dx = wx0 - p.x;
         float dy = wy0 - p.y;
         float d = sqrtf(dx * dx + dy * dy);
-        if (d < hitRadius) return i;
+        if (d < hitRadius) { return i; }
     }
 
     return -1;
@@ -576,7 +593,14 @@ bool App::GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis)
     DirectX::XMFLOAT3 ro, rd;
     m_camera.BuildRayFromScreen(float(mouseX), float(mouseY), ro, rd);
 
-    DirectX::XMFLOAT3 o = m_objectPos[m_activeObject];
+    DirectX::XMFLOAT3 o;
+
+    if (m_selectedVertex != -1) {
+        o = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+    } else {
+        o = m_objectPos[m_activeObject];
+    }
+
     const float axisLen = kGizmoAxisLen;
 
     auto testAxis = [&](int axis, const DirectX::XMFLOAT3& dir, float& outTRaw, float& outDistSq) { //outTRaw: parameter t on the infinite axis line. outDistSq: squared distance between the mouse ray and the clamped segment
@@ -647,7 +671,13 @@ bool App::GizmoComputeTOnAxis(int axis, int mouseX, int mouseY, float& outTOnAxi
     DirectX::XMFLOAT3 ro, rd;
     m_camera.BuildRayFromScreen(float(mouseX), float(mouseY), ro, rd);
 
-    DirectX::XMFLOAT3 o = m_objectPos[m_activeObject];
+    DirectX::XMFLOAT3 o;
+
+    if (m_selectedVertex != -1) {
+        o = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+    } else {
+        o = m_objectPos[m_activeObject];
+    }
 
     // While dragging, keep the axis origin fixed to the start-of-drag position,
     // otherwise 't' is measured against a moving origin and the object will flicker.
@@ -712,7 +742,14 @@ void App::UpdateGizmo() {
     {
         Vertex gizmo[kGizmoVertexCount] = {};
 
-        DirectX::XMFLOAT3 o = m_objectPos[m_activeObject];
+        DirectX::XMFLOAT3 o;
+
+        if (m_selectedVertex != -1) {
+            o = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+        } else {
+            o = m_objectPos[m_activeObject];
+        }
+
         const float len = kGizmoAxisLen;
 
         auto hotColor = DirectX::XMFLOAT4(1, 1, 1, 1);
@@ -819,7 +856,15 @@ void App::UpdateGizmo() {
             m_gizmoActiveAxis = axis;
             m_gizmoDragging = true;
 
-            m_gizmoStartPos = m_objectPos[m_activeObject];
+            if (m_selectedVertex != -1) {
+                m_gizmoStartPos = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+            } else {
+                if (m_selectedVertex != -1) {
+                    m_gizmoStartPos = m_editMesh->GetVertex((VertexID)m_selectedVertex);
+                } else {
+                    m_gizmoStartPos = m_objectPos[m_activeObject];
+                }
+            }
 
             // Use the same t-computation as the drag loop to avoid a 1-frame jump.
             if (!GizmoComputeTOnAxis(m_gizmoActiveAxis, m_input.mouseX, m_input.mouseY, m_gizmoDragT0))
@@ -833,11 +878,17 @@ void App::UpdateGizmo() {
         if (GizmoComputeTOnAxis(m_gizmoActiveAxis, m_input.mouseX, m_input.mouseY, t)) {
             float dt = t - m_gizmoDragT0;
             DirectX::XMFLOAT3 axisDir = (m_gizmoActiveAxis == 0) ? DirectX::XMFLOAT3(1, 0, 0) : (m_gizmoActiveAxis == 1) ? DirectX::XMFLOAT3(0, 1, 0) : DirectX::XMFLOAT3(0, 0, 1);
-            m_objectPos[m_activeObject] = DirectX::XMFLOAT3(
+            DirectX::XMFLOAT3 newPos(
                 m_gizmoStartPos.x + axisDir.x * dt,
                 m_gizmoStartPos.y + axisDir.y * dt,
                 m_gizmoStartPos.z + axisDir.z * dt
             );
+            if (m_selectedVertex != -1) {
+                m_editMesh->SetVertex((VertexID)m_selectedVertex, newPos);
+                m_renderMesh->dirty = true;
+            } else {
+                m_objectPos[m_activeObject] = newPos;
+            }
         }
     }
 

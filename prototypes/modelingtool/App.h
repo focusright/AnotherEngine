@@ -30,8 +30,14 @@ public:
     uint32_t ActiveObject() const { return m_activeObject; }
 
     void SetActiveObject(uint32_t index) {
-        if (index < m_objectCount)
-            m_activeObject = index;
+        if (index >= m_objectCount) return;
+        if (m_activeObject == index) return;
+
+        m_activeObject = index;
+        m_selectedVertex = -1;
+        m_gizmoDragging = false;
+        m_gizmoActiveAxis = -1;
+        m_gizmoHotAxis = -1;
     }
 
     bool AddObject(const DirectX::XMFLOAT3& pos);
@@ -105,6 +111,7 @@ private:
     DirectX::XMFLOAT3 m_gizmoStartPos = { 0,0,0 };
 
     int HitTestVertex(int mouseX, int mouseY);
+    int HitTestObject(int mouseX, int mouseY) const;
     void UpdateGizmo();
     bool GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis);
     bool GizmoComputeTOnAxis(int axis, int mouseX, int mouseY, float& outTOnAxis);

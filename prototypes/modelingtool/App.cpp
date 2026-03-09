@@ -221,28 +221,44 @@ void App::Update(float dt) {
         }
     }
 
-    // 1) On press: select a vertex, unless we clicked a gizmo axis.
+    // 1) On press: gizmo first, then active-object vertex, then object selection.
     if (!m_input.rmbDown && m_input.lmbPressed && !m_gizmoDragging) {
         int axis = -1;
         float t0 = 0.0f;
 
         if (!GizmoPickAxis(m_input.mouseX, m_input.mouseY, axis, t0)) {
-            m_selectedVertex = HitTestVertex(m_input.mouseX, m_input.mouseY);
-            m_isDragging = false;
+            int hitVertex = HitTestVertex(m_input.mouseX, m_input.mouseY);
 
-            for (int i = 0; i < 12; ++i) {
-                m_renderMesh->drawVertices[i].color = m_baseColors[i];
-            }
+            if (hitVertex != -1) {
+                m_selectedVertex = hitVertex;
+                m_isDragging = false;
 
-            if (m_selectedVertex != -1) {
+                for (int i = 0; i < 12; ++i) {
+                    m_renderMesh->drawVertices[i].color = m_baseColors[i];
+                }
+
                 for (int i = 0; i < 12; ++i) {
                     if ((int)m_renderMesh->drawToEdit[i] == m_selectedVertex) {
                         m_renderMesh->drawVertices[i].color = DirectX::XMFLOAT4(1, 1, 1, 1);
                     }
                 }
-            }
 
-            m_renderMesh->dirty = true;
+                m_renderMesh->dirty = true;
+            } else {
+                int hitObject = HitTestObject(m_input.mouseX, m_input.mouseY);
+
+                if (hitObject != -1) {
+                    SetActiveObject((uint32_t)hitObject);
+                } else {
+                    m_selectedVertex = -1;
+
+                    for (int i = 0; i < 12; ++i) {
+                        m_renderMesh->drawVertices[i].color = m_baseColors[i];
+                    }
+
+                    m_renderMesh->dirty = true;
+                }
+            }
         }
     }
 
@@ -470,6 +486,54 @@ int App::HitTestVertex(int mouseX, int mouseY) {
     }
 
     return bestVertex;
+}
+
+int App::HitTestObject(int mouseX, int mouseY) const {
+    DirectX::XMFLOAT3 origin, dir;
+    m_camera.BuildRayFromScreen(float(mouseX), float(mouseY), origin, dir);
+
+    DirectX::XMVECTOR rayOrigin = DirectX::XMLoadFloat3(&origin);
+    DirectX::XMVECTOR rayDir = DirectX::XMLoadFloat3(&dir);
+
+    float bestDist = 1.0e30f;
+    int bestIndex = -1;
+
+    for (uint32_t index = 0; index < m_objectCount; ++index) {
+        DirectX::XMFLOAT3 center = m_objectPos[index];
+
+        float scale = (std::max)(m_objectScale[index].x, (std::max)(m_objectScale[index].y, m_objectScale[index].z));
+        float radius = 1.0f * scale;
+
+        DirectX::XMVECTOR sphereCenter = DirectX::XMLoadFloat3(&center); //Also object center in world space
+        DirectX::XMVECTOR offset = DirectX::XMVectorSubtract(rayOrigin, sphereCenter); //points from the sphere center to the ray origin
+        
+        //proj < 0 means the ray points back toward the sphere
+        //proj > 0 means the ray points away from the sphere
+        float proj = DirectX::XMVectorGetX(DirectX::XMVector3Dot(offset, rayDir)); //is the sphere center roughly in front of the ray or behind it, and by how much?
+        float offsetLenSq = DirectX::XMVectorGetX(DirectX::XMVector3Dot(offset, offset)); //squared distance from the ray origin to the sphere center
+        //dist > 0 means the ray origin is outside the sphere
+        //dist == 0 means the ray origin is exactly on the sphere
+        //dist < 0 means the ray origin is inside the sphere
+        float dist = offsetLenSq - radius * radius;
+
+        if (dist > 0.0f && proj > 0.0f) continue; //the ray starts outside the sphere or the ray points away from the sphere, so a hit is impossible
+
+        //disc < 0 means no real intersection
+        //disc == 0 means tangent hit
+        //disc > 0 means the ray enters and exits the sphere
+        float disc = proj * proj - dist; //quadratic discriminant
+        if (disc < 0.0f) continue; //So if disc is negative, skip this object
+
+        float hit = -proj - std::sqrt(disc);
+        if (hit < 0.0f) hit = 0.0f;
+
+        if (hit < bestDist) {
+            bestDist = hit;
+            bestIndex = (int)index;
+        }
+    }
+
+    return bestIndex;
 }
 
 bool App::ScreenToWorldOnZPlane(int screenX, int screenY, float& worldX, float& worldY) {

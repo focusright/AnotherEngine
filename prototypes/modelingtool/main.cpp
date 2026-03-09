@@ -150,10 +150,19 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
         ImGui::NewFrame();
 
         ImGui::Begin("Scene");
-        ImGui::Text("Active Object: %u", g_app.ActiveObject());
-        ImGui::Text("Object Count: %u", g_app.ObjectCount());
-        ImGui::End();
+        ImGui::Text("OBJECTS LIST:");
 
+        for (uint32_t i = 0; i < g_app.ObjectCount(); ++i) {
+            char label[32];
+            sprintf_s(label, "Object %u", i);
+
+            bool selected = (g_app.ActiveObject() == i);
+            if (ImGui::Selectable(label, selected)) {
+                g_app.SetActiveObject(i);
+            }
+        }
+
+        ImGui::End();
         ImGui::Render();
 
         g_app.Update(dt);

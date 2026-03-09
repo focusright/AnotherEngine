@@ -518,13 +518,25 @@ int App::HitTestObject(int mouseX, int mouseY) const {
 
         if (dist > 0.0f && proj > 0.0f) continue; //the ray starts outside the sphere or the ray points away from the sphere, so a hit is impossible
 
-        //disc < 0 means no real intersection
-        //disc == 0 means tangent hit
-        //disc > 0 means the ray enters and exits the sphere
-        float disc = proj * proj - dist; //quadratic discriminant
+        //ax² + bx + c = 0, x = -b ± sqrt(b² - 4ac) / 2a, discriminant = b² - 4ac
+
+        float disc = proj * proj - dist; //reduced discriminant, obtained because the ray-sphere quadratic was written as:
+        //t² + 2proj·t + dist = 0
+        //a = 1
+        //b = 2proj
+        //c = dist
+        //disc = 4(proj² - dist)
+
+        //disc < 0 means no real intersection (No real roots)
+        //disc == 0 means tangent hit (one real root)
+        //disc > 0 means the ray enters and exits the sphere (two distinct real roots)
         if (disc < 0.0f) continue; //So if disc is negative, skip this object
 
-        float hit = -proj - std::sqrt(disc);
+        float hit = -proj - std::sqrt(disc); //t = -proj ± sqrt(disc), using only minus because that is the nearer root
+        //Since sqrt(disc) is nonnegative, -proj - sqrt(disc) <= -proj + sqrt(disc)
+        //-proj - sqrt(disc) is the smaller root
+        //-proj + sqrt(disc) is the larger root
+        
         if (hit < 0.0f) hit = 0.0f;
 
         if (hit < bestDist) {

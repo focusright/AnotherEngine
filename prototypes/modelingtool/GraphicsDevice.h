@@ -33,6 +33,11 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE DSV() const;
     ID3D12Resource* DepthStencil() const { return m_depthStencil.Get(); }
 
+    bool CreateSrvHeap(ID3D12Device* device, uint32_t descriptorCount);
+
+    ID3D12DescriptorHeap* SrvHeap() const { return m_srvHeap.Get(); }
+    D3D12_CPU_DESCRIPTOR_HANDLE SrvCpuStart() const;
+    D3D12_GPU_DESCRIPTOR_HANDLE SrvGpuStart() const;
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Device> m_device;
@@ -47,4 +52,7 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
     Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencil;
+
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvHeap;
+    uint32_t m_srvDescriptorSize = 0;
 };

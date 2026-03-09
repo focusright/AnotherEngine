@@ -10,6 +10,9 @@
 #include "GraphicsDevice.h"
 #include "Engine.h"
 #include "App.h"
+#include "third_party/imgui/imgui.h"
+#include "third_party/imgui/imgui_impl_win32.h"
+#include "third_party/imgui/imgui_impl_dx12.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -53,14 +56,6 @@ struct InputState {
     bool lmbReleased = false;  // edge: went up this frame
 };
 
-InputState g_input;
-
-// Mouse interaction variables
-bool g_isDragging = false;
-int g_selectedVertex = -1;
-POINT g_lastMousePos = {0, 0};
-//Vertex g_vertices[3];  // Store vertices for easy manipulation
-
 EditableMesh g_editMesh;
 RenderMesh   g_renderMesh;
 
@@ -71,17 +66,20 @@ void InitializeDirect3D();
 void CreatePipelineState();
 void CreateVertexBuffer();
 void CreateGridVertexBuffer();
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 static void ShutdownD3D() {
-    // Make sure the GPU is done before we start tearing down resources.
     g_engine.WaitForGpu();
+
+    ImGui_ImplDX12_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
 
     if (g_fenceEvent) {
         CloseHandle(g_fenceEvent);
         g_fenceEvent = nullptr;
     }
 
-    // Release resources in a sane order (roughly reverse of creation).
     g_vertexBufferGrid.Reset();
     g_vertexBuffer.Reset();
 
@@ -93,9 +91,6 @@ static void ShutdownD3D() {
     g_commandAllocator.Reset();
 
     g_fence.Reset();
-
-    // Swapchain/queue/rtv heap are owned by g_gfx (ComPtrs in GraphicsDevice).
-    // Device last.
     g_device.Reset();
 }
 
@@ -114,6 +109,27 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
     g_app.SetEngine(&g_engine);
     g_app.SetMeshes(&g_editMesh, &g_renderMesh);
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+
+    ImGuiIO& io = ImGui::GetIO();
+    (void)io;
+
+    ImGui_ImplWin32_Init(g_hwnd);
+
+    ImGui_ImplDX12_InitInfo init_info = {};
+    init_info.Device = g_device.Get();
+    init_info.CommandQueue = g_gfx.Queue();
+    init_info.NumFramesInFlight = 2;
+    init_info.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    init_info.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+    init_info.SrvDescriptorHeap = g_gfx.SrvHeap();
+    init_info.LegacySingleSrvCpuDescriptor = g_gfx.SrvCpuStart();
+    init_info.LegacySingleSrvGpuDescriptor = g_gfx.SrvGpuStart();
+
+    ImGui_ImplDX12_Init(&init_info);
+
     LARGE_INTEGER freq;
     LARGE_INTEGER prev;
     QueryPerformanceFrequency(&freq);
@@ -129,6 +145,17 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
         float dt = float(double(now.QuadPart - prev.QuadPart) / double(freq.QuadPart));
         prev = now;
 
+        ImGui_ImplDX12_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::Begin("Scene");
+        ImGui::Text("Active Object: %u", g_app.ActiveObject());
+        ImGui::Text("Object Count: %u", g_app.ObjectCount());
+        ImGui::End();
+
+        ImGui::Render();
+
         g_app.Update(dt);
         g_engine.RenderFrame();
     }
@@ -138,6 +165,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam)) return true;
+
     bool handled = false;
     LRESULT appResult = g_app.HandleWindowMessage(hwnd, uMsg, wParam, lParam, handled);
     if (handled) return appResult;
@@ -240,6 +269,12 @@ void InitializeDirect3D() {
 
     if (!g_gfx.CreateDSV(g_device.Get(), WINDOW_WIDTH, WINDOW_HEIGHT)) {
         MessageBox(g_hwnd, L"CreateDSV failed.", L"Error", MB_OK);
+        PostQuitMessage(0);
+        return;
+    }
+
+    if (!g_gfx.CreateSrvHeap(g_device.Get(), 1)) {
+        MessageBox(g_hwnd, L"CreateSrvHeap failed.", L"Error", MB_OK);
         PostQuitMessage(0);
         return;
     }

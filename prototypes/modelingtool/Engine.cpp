@@ -3,6 +3,8 @@
 #include "RenderMesh.h"
 #include "EditableMesh.h"
 #include <DirectXMath.h>
+#include "third_party/imgui/imgui.h"
+#include "third_party/imgui/imgui_impl_dx12.h"
 
 void Engine::SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12GraphicsCommandList* commandList, ID3D12RootSignature* rootSignature, ID3D12PipelineState* pipelineStateTriangles, ID3D12PipelineState* pipelineStateLines, ID3D12PipelineState* pipelineStateLinesOccluded, ID3D12PipelineState* pipelineStateGizmo, ID3D12PipelineState* pipelineStateGizmoOccluded, ID3D12Fence* fence, HANDLE fenceEvent, UINT64* fenceValue, ID3D12Resource* vertexBufferTetra, ID3D12Resource* vertexBufferGrid, uint32_t gridVertexCount, uint32_t width, uint32_t height) {
     m_commandAllocator = commandAllocator;
@@ -54,20 +56,9 @@ void Engine::PopulateCommandList() {
 
     m_commandList->SetGraphicsRootSignature(m_rootSignature);
 
-    D3D12_VIEWPORT viewport{
-        0.0f,
-        0.0f,
-        static_cast<float>(m_width),
-        static_cast<float>(m_height),
-        0.0f,
-        1.0f
-    };
-    D3D12_RECT scissorRect{
-        0,
-        0,
-        (LONG)m_width,
-        (LONG)m_height
-    };
+    D3D12_VIEWPORT viewport{ 0.0f, 0.0f, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f };
+    D3D12_RECT scissorRect{ 0, 0, (LONG)m_width, (LONG)m_height };
+
     m_commandList->RSSetViewports(1, &viewport);
     m_commandList->RSSetScissorRects(1, &scissorRect);
 
@@ -179,6 +170,8 @@ void Engine::PopulateCommandList() {
         }
     }
 
+    RenderFrameImGui();
+
     barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_gfx->CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
     m_commandList->ResourceBarrier(1, &barrier);
 
@@ -266,4 +259,11 @@ void Engine::UpdateGizmoVertices(const Vertex* verts, uint32_t count, HWND hwnd)
     memcpy(pData + byteOffset, verts, sizeof(Vertex) * count);
 
     m_vertexBufferGrid->Unmap(0, nullptr);
+}
+
+void Engine::RenderFrameImGui() {
+    ID3D12DescriptorHeap* heaps[] = { m_gfx->SrvHeap() };
+    m_commandList->SetDescriptorHeaps(1, heaps);
+
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_commandList);
 }

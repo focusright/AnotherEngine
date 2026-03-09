@@ -43,7 +43,8 @@ public:
     // Debug helpers (editor-only visualization).
     // If set to a valid index, that object will be tinted cyan to visualize a pivot/marker.
     void SetDebugPivotIndex(uint32_t index) { m_debugPivotIndex = index; }
-
+    
+    void RenderFrameImGui();
 private:
     GraphicsDevice* m_gfx = nullptr;
 

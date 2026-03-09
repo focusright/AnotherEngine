@@ -122,3 +122,26 @@ bool GraphicsDevice::CreateDSV(ID3D12Device* device, uint32_t width, uint32_t he
 D3D12_CPU_DESCRIPTOR_HANDLE GraphicsDevice::DSV() const {
     return m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 }
+
+bool GraphicsDevice::CreateSrvHeap(ID3D12Device* device, uint32_t descriptorCount) {
+    if (!device || descriptorCount == 0) return false;
+
+    D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+    heapDesc.NumDescriptors = descriptorCount;
+    heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+    HRESULT hr = device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_srvHeap));
+    if (FAILED(hr)) return false;
+
+    m_srvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    return true;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE GraphicsDevice::SrvCpuStart() const {
+    return m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE GraphicsDevice::SrvGpuStart() const {
+    return m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+}

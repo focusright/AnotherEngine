@@ -505,8 +505,27 @@ int App::HitTestObject(int mouseX, int mouseY) const {
         float radius = 1.0f * scale;
 
         DirectX::XMVECTOR sphereCenter = DirectX::XMLoadFloat3(&center); //Also object center in world space
-        DirectX::XMVECTOR offset = DirectX::XMVectorSubtract(rayOrigin, sphereCenter); //points from the sphere center to the ray origin
+        DirectX::XMVECTOR offset = DirectX::XMVectorSubtract(rayOrigin, sphereCenter); //points from the sphere center to the ray origin 
         
+        /*
+        |X - C| = r(Sphere: C is the sphere center, r is the radius, X is any point on the sphere)
+        |X - C|^2 = r^2      (Remove the square root on the LHS since it's a distance formula)
+        P(t) = O + tD        (Ray: O = origin, D = direction, t = distance along the ray)
+        |O + tD - C|^2 = r^2 (plug ray into the sphere equation) 
+        m = O - C            (vector from sphere center to ray origin)
+        |m + tD|^2 = r^2
+        |m + tD|^2 = (m + tD) · (m + tD)
+        (m + tD) · (m + tD) = m·m + 2t(m·D) + t^2(D·D)
+        t^2(D·D) + 2t(m·D) + (m·m - r^2) = 0
+        m·m : The squared distance from the ray origin to the sphere center
+        m·D : how the ray direction lines up with the vector from center to origin
+        D·D = 1 : The squared length of the direction vector (normalized)
+        m·m - r^2 : whether the ray origin starts outside, on, or inside the sphere
+            positive: outside
+            zero: exactly on surface
+            negative: inside
+        */
+
         //proj < 0 means the ray points back toward the sphere
         //proj > 0 means the ray points away from the sphere
         float proj = DirectX::XMVectorGetX(DirectX::XMVector3Dot(offset, rayDir)); //is the sphere center roughly in front of the ray or behind it, and by how much?

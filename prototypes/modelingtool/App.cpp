@@ -673,35 +673,31 @@ void App::UpdateViewProj() {
 }
 
 void App::FocusCamera() {
-    DirectX::XMFLOAT3 pts[3] = {
-        m_editMesh->GetVertex(0),
-        m_editMesh->GetVertex(1),
-        m_editMesh->GetVertex(2),
-    };
-    // Compute the same center/radius that EditorCamera::FocusOnPoints uses so we can
-    // update our view-center pivot and orbit distance.
-    DirectX::XMFLOAT3 c = { 0, 0, 0 };
-    for (int i = 0; i < 3; ++i) {
-        c.x += pts[i].x;
-        c.y += pts[i].y;
-        c.z += pts[i].z;
-    }
-    c.x /= 3.0f; c.y /= 3.0f; c.z /= 3.0f;
+    if (m_activeObject >= m_objectCount)
+        return;
 
-    float r = 0.0f;
-    for (int i = 0; i < 3; ++i) {
-        float dx = pts[i].x - c.x;
-        float dy = pts[i].y - c.y;
-        float dz = pts[i].z - c.z;
-        r = (std::max)(r, std::sqrt(dx * dx + dy * dy + dz * dz));
-    }
-    r = (std::max)(r, 0.5f);
+    DirectX::XMFLOAT3 center = m_objectPos[m_activeObject];
 
-    float dist = r / std::tan(DirectX::XM_PIDIV4 * 0.5f);
+    DirectX::XMFLOAT3 scale = m_objectScale[m_activeObject];
+    float maxScale = (std::max)(scale.x, (std::max)(scale.y, scale.z));
+
+    float baseRadius = 0.75f;
+    float radius = baseRadius * maxScale;
+    radius = (std::max)(radius, 0.5f);
+
+    float dist = radius / std::tan(m_camera.FovY() * 0.5f);
     dist = (std::max)(dist, 1.0f);
 
-    m_camera.FocusOnPoints(pts, 3);
-    m_viewPivot = c;
+    DirectX::XMFLOAT3 forward = m_camera.Forward();
+
+    DirectX::XMFLOAT3 pos = {
+        center.x - forward.x * dist,
+        center.y - forward.y * dist,
+        center.z - forward.z * dist
+    };
+
+    m_camera.SetPosition(pos);
+    m_viewPivot = center;
     m_orbitDistance = dist;
 }
 

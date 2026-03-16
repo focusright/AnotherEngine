@@ -80,24 +80,24 @@ void EditorCamera::Dolly(float wheelSteps) {
 void EditorCamera::FocusOnPoints(const XMFLOAT3* points, int count) {
     if (!points || count <= 0) return;
 
-    XMFLOAT3 c = { 0, 0, 0 };
-    for (int i = 0; i < count; ++i) {
+    XMFLOAT3 c = { 0, 0, 0 }; //centroid
+    for (int i = 0; i < count; ++i) { 
         c.x += points[i].x;
         c.y += points[i].y;
         c.z += points[i].z;
-    }
+    } //averages all inputs points to find centroid
     c.x /= count; c.y /= count; c.z /= count;
 
     float r = 0.0f;
-    for (int i = 0; i < count; ++i) {
+    for (int i = 0; i < count; ++i) { //Compute a bounding sphere radius around that center
         float dx = points[i].x - c.x;
         float dy = points[i].y - c.y;
         float dz = points[i].z - c.z;
-        r = (std::max)(r, std::sqrt(dx * dx + dy * dy + dz * dz));
+        r = (std::max)(r, std::sqrt(dx * dx + dy * dy + dz * dz)); //compare previous r to current r
     }
     r = (std::max)(r, 0.5f);
 
-    // Distance so object fits in view vertically.
+    // Choose a distance so that the sphere fits vertically in the camera's field of view
     float dist = r / std::tan(m_fovY * 0.5f);
     dist = (std::max)(dist, 1.0f);
 

@@ -149,20 +149,67 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
+        ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);    //Use ImGuiCond_Always for tweaking
+        ImGui::SetNextWindowSize(ImVec2(220, 210), ImGuiCond_FirstUseEver); //Use ImGuiCond_FirstUseEver after done tweaking
         ImGui::Begin("Scene");
-        ImGui::Text("OBJECTS LIST:");
+
+        if (ImGui::Button("Add")) {
+            g_app.AddObject(DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Duplicate")) {
+            g_app.DuplicateActiveObject();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Delete")) {
+            g_app.DeleteActiveObject();
+        }
+
+        if (ImGui::Button("Save")) {
+            g_app.SaveSceneAem(L"scene.aem");
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load")) {
+            g_app.LoadSceneAem(L"scene.aem");
+        }
+
+        ImGui::Separator();
+        ImGui::Text("OBJECT LIST:");
 
         for (uint32_t i = 0; i < g_app.ObjectCount(); ++i) {
             char label[32];
             sprintf_s(label, "Object %u", i);
-
-            bool selected = (g_app.ActiveObject() == i);
-            if (ImGui::Selectable(label, selected)) {
+            bool selected = (i == g_app.ActiveObject());
+            if (ImGui::Selectable(label, selected))
                 g_app.SetActiveObject(i);
+        }
+
+        ImGui::Separator();
+
+        DirectX::XMFLOAT3 pos;
+        DirectX::XMFLOAT3 rot;
+        DirectX::XMFLOAT3 scale;
+        if (g_app.GetActiveObjectTransform(pos, rot, scale)) {
+            float posEdit[3] = { pos.x, pos.y, pos.z };
+            float rotEdit[3] = { rot.x, rot.y, rot.z };
+            float scaleEdit[3] = { scale.x, scale.y, scale.z };
+
+            bool changed = false;
+            changed |= ImGui::DragFloat3("Position", posEdit, 0.05f);
+            changed |= ImGui::DragFloat3("Rotation", rotEdit, 0.01f);
+            changed |= ImGui::DragFloat3("Scale", scaleEdit, 0.05f);
+
+            if (changed) {
+                g_app.SetActiveObjectTransform(
+                    DirectX::XMFLOAT3(posEdit[0], posEdit[1], posEdit[2]),
+                    DirectX::XMFLOAT3(rotEdit[0], rotEdit[1], rotEdit[2]),
+                    DirectX::XMFLOAT3(scaleEdit[0], scaleEdit[1], scaleEdit[2])
+                );
             }
         }
 
         ImGui::End();
+
         ImGui::Render();
 
         g_app.Update(dt);

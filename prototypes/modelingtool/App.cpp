@@ -770,6 +770,32 @@ bool App::LoadSceneAem(const wchar_t* path) {
     return true;
 }
 
+bool App::GetActiveObjectTransform(DirectX::XMFLOAT3& pos, DirectX::XMFLOAT3& rot, DirectX::XMFLOAT3& scale) const {
+    if (m_activeObject >= m_objectCount)
+        return false;
+
+    pos = m_objectPos[m_activeObject];
+    rot = m_objectRot[m_activeObject];
+    scale = m_objectScale[m_activeObject];
+    return true;
+}
+
+bool App::SetActiveObjectTransform(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT3& rot, const DirectX::XMFLOAT3& scale) {
+    if (m_activeObject >= m_objectCount)
+        return false;
+
+    DirectX::XMFLOAT3 safeScale = scale;
+    const float minScale = 0.001f;
+    if (fabsf(safeScale.x) < minScale) safeScale.x = (safeScale.x < 0.0f) ? -minScale : minScale;
+    if (fabsf(safeScale.y) < minScale) safeScale.y = (safeScale.y < 0.0f) ? -minScale : minScale;
+    if (fabsf(safeScale.z) < minScale) safeScale.z = (safeScale.z < 0.0f) ? -minScale : minScale;
+
+    m_objectPos[m_activeObject] = pos;
+    m_objectRot[m_activeObject] = rot;
+    m_objectScale[m_activeObject] = safeScale;
+    return true;
+}
+
 bool App::GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis) { //outAxis: 0=X, 1=Y, 2=Z. outTOnAxis: "raw parameter t along the infinite axis line" at the closest point
     // Pick the closest axis by ray-to-segment distance.
     // We use a conservative threshold in world units.

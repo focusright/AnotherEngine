@@ -47,6 +47,9 @@ public:
     bool SaveSceneAem(const wchar_t* path);
     bool LoadSceneAem(const wchar_t* path);
 
+    bool GetActiveObjectTransform(DirectX::XMFLOAT3& pos, DirectX::XMFLOAT3& rot, DirectX::XMFLOAT3& scale) const;
+    bool SetActiveObjectTransform(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT3& rot, const DirectX::XMFLOAT3& scale);
+
 private:
     struct InputState {
         int mouseX = 0;

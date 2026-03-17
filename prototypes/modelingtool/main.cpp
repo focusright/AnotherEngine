@@ -67,6 +67,11 @@ void CreatePipelineState();
 void CreateVertexBuffer();
 void CreateGridVertexBuffer();
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+void InitializeImGui();
+void ShutdownImGui();
+void BeginImGuiFrame();
+void EndImGuiFrame();
+void DrawSceneWindow();
 
 static void ShutdownD3D() {
     g_engine.WaitForGpu();
@@ -100,7 +105,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
     CreatePipelineState();
     CreateVertexBuffer();
     CreateGridVertexBuffer();
-    
+
     g_editorCamera.SetLens(DirectX::XM_PIDIV4, 0.1f, 1000.0f);
     g_engine.SetGraphicsDevice(&g_gfx);
     g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_pipelineStateLine.Get(), g_pipelineStateLineOccluded.Get(), g_pipelineStateGizmo.Get(), g_pipelineStateGizmoOccluded.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), g_vertexBufferGrid.Get(), g_gridVertexCount, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -109,33 +114,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
     g_app.SetEngine(&g_engine);
     g_app.SetMeshes(&g_editMesh, &g_renderMesh);
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui::StyleColorsDark();
-
-    ImGuiIO& io = ImGui::GetIO();
-    (void)io;
-
-    ImGui_ImplWin32_Init(g_hwnd);
-
-    ImGui_ImplDX12_InitInfo init_info = {};
-    init_info.Device = g_device.Get();
-    init_info.CommandQueue = g_gfx.Queue();
-    init_info.NumFramesInFlight = 2;
-    init_info.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-    init_info.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-    init_info.SrvDescriptorHeap = g_gfx.SrvHeap();
-    init_info.LegacySingleSrvCpuDescriptor = g_gfx.SrvCpuStart();
-    init_info.LegacySingleSrvGpuDescriptor = g_gfx.SrvGpuStart();
-
-    ImGui_ImplDX12_Init(&init_info);
+    InitializeImGui();
 
     LARGE_INTEGER freq;
     LARGE_INTEGER prev;
     QueryPerformanceFrequency(&freq);
     QueryPerformanceCounter(&prev);
 
-    MSG msg = {}; // Main message loop
+    MSG msg = {};
     while (msg.message != WM_QUIT) {
         g_app.BeginFrameInput();
         g_app.PumpMessages(msg);
@@ -145,77 +131,15 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
         float dt = float(double(now.QuadPart - prev.QuadPart) / double(freq.QuadPart));
         prev = now;
 
-        ImGui_ImplDX12_NewFrame();
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
-
-        ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);    //Use ImGuiCond_Always for tweaking
-        ImGui::SetNextWindowSize(ImVec2(220, 210), ImGuiCond_FirstUseEver); //Use ImGuiCond_FirstUseEver after done tweaking
-        ImGui::Begin("Scene");
-
-        if (ImGui::Button("Add")) {
-            g_app.AddObject(DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Duplicate")) {
-            g_app.DuplicateActiveObject();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Delete")) {
-            g_app.DeleteActiveObject();
-        }
-
-        if (ImGui::Button("Save")) {
-            g_app.SaveSceneAem(L"scene.aem");
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Load")) {
-            g_app.LoadSceneAem(L"scene.aem");
-        }
-
-        ImGui::Separator();
-        ImGui::Text("OBJECT LIST:");
-
-        for (uint32_t i = 0; i < g_app.ObjectCount(); ++i) {
-            char label[32];
-            sprintf_s(label, "Object %u", i);
-            bool selected = (i == g_app.ActiveObject());
-            if (ImGui::Selectable(label, selected))
-                g_app.SetActiveObject(i);
-        }
-
-        ImGui::Separator();
-
-        DirectX::XMFLOAT3 pos;
-        DirectX::XMFLOAT3 rot;
-        DirectX::XMFLOAT3 scale;
-        if (g_app.GetActiveObjectTransform(pos, rot, scale)) {
-            float posEdit[3] = { pos.x, pos.y, pos.z };
-            float rotEdit[3] = { rot.x, rot.y, rot.z };
-            float scaleEdit[3] = { scale.x, scale.y, scale.z };
-
-            bool changed = false;
-            changed |= ImGui::DragFloat3("Position", posEdit, 0.05f);
-            changed |= ImGui::DragFloat3("Rotation", rotEdit, 0.01f);
-            changed |= ImGui::DragFloat3("Scale", scaleEdit, 0.05f);
-
-            if (changed) {
-                g_app.SetActiveObjectTransform(
-                    DirectX::XMFLOAT3(posEdit[0], posEdit[1], posEdit[2]),
-                    DirectX::XMFLOAT3(rotEdit[0], rotEdit[1], rotEdit[2]),
-                    DirectX::XMFLOAT3(scaleEdit[0], scaleEdit[1], scaleEdit[2])
-                );
-            }
-        }
-
-        ImGui::End();
-
-        ImGui::Render();
+        BeginImGuiFrame();
+        DrawSceneWindow();
+        EndImGuiFrame();
 
         g_app.Update(dt);
         g_engine.RenderFrame();
     }
 
+    ShutdownImGui();
     ShutdownD3D();
     return static_cast<int>(msg.wParam);
 }
@@ -606,4 +530,108 @@ void CreateVertexBuffer() {
     g_vertexBuffer->Unmap(0, nullptr);
 
     g_renderMesh.dirty = false;
+}
+
+void InitializeImGui() {
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+
+    ImGuiIO& io = ImGui::GetIO();
+    (void)io;
+
+    ImGui_ImplWin32_Init(g_hwnd);
+
+    ImGui_ImplDX12_InitInfo initInfo = {};
+    initInfo.Device = g_device.Get();
+    initInfo.CommandQueue = g_gfx.Queue();
+    initInfo.NumFramesInFlight = 2;
+    initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    initInfo.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+    initInfo.SrvDescriptorHeap = g_gfx.SrvHeap();
+    initInfo.LegacySingleSrvCpuDescriptor = g_gfx.SrvCpuStart();
+    initInfo.LegacySingleSrvGpuDescriptor = g_gfx.SrvGpuStart();
+
+    ImGui_ImplDX12_Init(&initInfo);
+}
+
+void ShutdownImGui() {
+    ImGui_ImplDX12_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void BeginImGuiFrame() {
+    ImGui_ImplDX12_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+}
+
+void EndImGuiFrame() {
+    ImGui::Render();
+}
+
+void DrawSceneWindow() {
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(220, 210), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Scene");
+
+    if (ImGui::Button("Add")) {
+        g_app.AddObject(DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Duplicate")) {
+        g_app.DuplicateActiveObject();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Delete")) {
+        g_app.DeleteActiveObject();
+    }
+
+    const wchar_t* scenePath = L"scene.aem";
+
+    if (ImGui::Button("Save")) {
+        g_app.SaveSceneAem(scenePath);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Load")) {
+        g_app.LoadSceneAem(scenePath);
+    }
+
+    ImGui::Separator();
+    ImGui::Text("OBJECT LIST:");
+
+    for (uint32_t i = 0; i < g_app.ObjectCount(); ++i) {
+        char label[32];
+        sprintf_s(label, "Object %u", i);
+        bool selected = (i == g_app.ActiveObject());
+        if (ImGui::Selectable(label, selected))
+            g_app.SetActiveObject(i);
+    }
+
+    ImGui::Separator();
+
+    DirectX::XMFLOAT3 pos;
+    DirectX::XMFLOAT3 rot;
+    DirectX::XMFLOAT3 scale;
+    if (g_app.GetActiveObjectTransform(pos, rot, scale)) {
+        float posEdit[3] = { pos.x, pos.y, pos.z };
+        float rotEdit[3] = { rot.x, rot.y, rot.z };
+        float scaleEdit[3] = { scale.x, scale.y, scale.z };
+
+        bool changed = false;
+        changed |= ImGui::DragFloat3("Position", posEdit, 0.05f);
+        changed |= ImGui::DragFloat3("Rotation", rotEdit, 0.01f);
+        changed |= ImGui::DragFloat3("Scale", scaleEdit, 0.05f);
+
+        if (changed) {
+            g_app.SetActiveObjectTransform(
+                DirectX::XMFLOAT3(posEdit[0], posEdit[1], posEdit[2]),
+                DirectX::XMFLOAT3(rotEdit[0], rotEdit[1], rotEdit[2]),
+                DirectX::XMFLOAT3(scaleEdit[0], scaleEdit[1], scaleEdit[2])
+            );
+        }
+    }
+
+    ImGui::End();
 }

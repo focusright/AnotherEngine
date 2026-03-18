@@ -10,6 +10,7 @@
 #include "GraphicsDevice.h"
 #include "Engine.h"
 #include "App.h"
+#include "EditorCommands.h"
 #include "third_party/imgui/imgui.h"
 #include "third_party/imgui/imgui_impl_win32.h"
 #include "third_party/imgui/imgui_impl_dx12.h"
@@ -76,10 +77,6 @@ void DrawSceneWindow();
 static void ShutdownD3D() {
     g_engine.WaitForGpu();
 
-    ImGui_ImplDX12_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
-
     if (g_fenceEvent) {
         CloseHandle(g_fenceEvent);
         g_fenceEvent = nullptr;
@@ -88,6 +85,9 @@ static void ShutdownD3D() {
     g_vertexBufferGrid.Reset();
     g_vertexBuffer.Reset();
 
+    g_pipelineStateGizmoOccluded.Reset();
+    g_pipelineStateGizmo.Reset();
+    g_pipelineStateLineOccluded.Reset();
     g_pipelineStateLine.Reset();
     g_pipelineState.Reset();
     g_rootSignature.Reset();
@@ -577,25 +577,38 @@ void DrawSceneWindow() {
     ImGui::Begin("Scene");
 
     if (ImGui::Button("Add")) {
-        g_app.AddObject(DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+        EditorCommand command = {};
+        command.type = EditorCommandType::AddObject;
+        command.pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+        g_app.ExecuteCommand(command);
     }
     ImGui::SameLine();
     if (ImGui::Button("Duplicate")) {
-        g_app.DuplicateActiveObject();
+        EditorCommand command = {};
+        command.type = EditorCommandType::DuplicateActiveObject;
+        g_app.ExecuteCommand(command);
     }
     ImGui::SameLine();
     if (ImGui::Button("Delete")) {
-        g_app.DeleteActiveObject();
+        EditorCommand command = {};
+        command.type = EditorCommandType::DeleteActiveObject;
+        g_app.ExecuteCommand(command);
     }
 
     const wchar_t* scenePath = L"scene.aem";
 
     if (ImGui::Button("Save")) {
-        g_app.SaveSceneAem(scenePath);
+        EditorCommand command = {};
+        command.type = EditorCommandType::SaveScene;
+        command.path = scenePath;
+        g_app.ExecuteCommand(command);
     }
     ImGui::SameLine();
     if (ImGui::Button("Load")) {
-        g_app.LoadSceneAem(scenePath);
+        EditorCommand command = {};
+        command.type = EditorCommandType::LoadScene;
+        command.path = scenePath;
+        g_app.ExecuteCommand(command);
     }
 
     ImGui::Separator();
@@ -605,8 +618,12 @@ void DrawSceneWindow() {
         char label[32];
         sprintf_s(label, "Object %u", i);
         bool selected = (i == g_app.ActiveObject());
-        if (ImGui::Selectable(label, selected))
-            g_app.SetActiveObject(i);
+        if (ImGui::Selectable(label, selected)) {
+            EditorCommand command = {};
+            command.type = EditorCommandType::SetActiveObject;
+            command.objectIndex = i;
+            g_app.ExecuteCommand(command);
+        }
     }
 
     ImGui::Separator();
@@ -625,11 +642,12 @@ void DrawSceneWindow() {
         changed |= ImGui::DragFloat3("Scale", scaleEdit, 0.05f);
 
         if (changed) {
-            g_app.SetActiveObjectTransform(
-                DirectX::XMFLOAT3(posEdit[0], posEdit[1], posEdit[2]),
-                DirectX::XMFLOAT3(rotEdit[0], rotEdit[1], rotEdit[2]),
-                DirectX::XMFLOAT3(scaleEdit[0], scaleEdit[1], scaleEdit[2])
-            );
+            EditorCommand command = {};
+            command.type = EditorCommandType::SetActiveTransform;
+            command.pos = DirectX::XMFLOAT3(posEdit[0], posEdit[1], posEdit[2]);
+            command.rot = DirectX::XMFLOAT3(rotEdit[0], rotEdit[1], rotEdit[2]);
+            command.scale = DirectX::XMFLOAT3(scaleEdit[0], scaleEdit[1], scaleEdit[2]);
+            g_app.ExecuteCommand(command);
         }
     }
 

@@ -94,6 +94,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EditorCommands.h" />
     <ClInclude Include="third_party\imgui\imgui.h" />
     <ClInclude Include="third_party\imgui\imgui_impl_win32.h" />
     <ClInclude Include="third_party\imgui\imgui_impl_dx12.h" />

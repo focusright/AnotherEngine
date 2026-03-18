@@ -7,6 +7,7 @@
 #include "Engine.h"
 #include "EditorCamera.h"
 #include "EditorContext.h"
+#include "EditorCommands.h"
 
 struct EditableMesh;
 struct RenderMesh;
@@ -50,6 +51,7 @@ public:
     bool GetActiveObjectTransform(DirectX::XMFLOAT3& pos, DirectX::XMFLOAT3& rot, DirectX::XMFLOAT3& scale) const;
     bool SetActiveObjectTransform(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT3& rot, const DirectX::XMFLOAT3& scale);
 
+    bool ExecuteCommand(const EditorCommand& command);
 private:
     struct InputState {
         int mouseX = 0;

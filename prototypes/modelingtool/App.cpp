@@ -415,34 +415,38 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             if (wParam < 256) {
                 bool wasDown = (lParam & (1 << 30)) != 0;
                 m_input.keys[wParam] = true;
-                if (!wasDown && (wParam == 'F')) { m_input.fPressed = true; }
 
-                // Scene save/load (v0.0.2)
                 if (!wasDown && wParam == 'S' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
-                    SaveSceneAem(L"scene.aem");
+                    EditorCommand command = {};
+                    command.type = EditorCommandType::SaveScene;
+                    command.path = L"scene.aem";
+                    ExecuteCommand(command);
                 }
+
                 if (!wasDown && wParam == 'O' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
-                    LoadSceneAem(L"scene.aem");
+                    EditorCommand command = {};
+                    command.type = EditorCommandType::LoadScene;
+                    command.path = L"scene.aem";
+                    ExecuteCommand(command);
                 }
 
-
-                // Add new object at origin
                 if (!wasDown && wParam == 'N') {
-                    AddObject(DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+                    EditorCommand command = {};
+                    command.type = EditorCommandType::AddObject;
+                    command.pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+                    ExecuteCommand(command);
                 }
-                // Duplicate active object (Ctrl+D)
+
                 if (!wasDown && wParam == 'D' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
-                    DuplicateActiveObject();
+                    EditorCommand command = {};
+                    command.type = EditorCommandType::DuplicateActiveObject;
+                    ExecuteCommand(command);
                 }
-                // Delete active object
+
                 if (!wasDown && wParam == VK_DELETE) {
-                    DeleteActiveObject();
-                }
-                // Select object 1–9
-                if (!wasDown && wParam >= '1' && wParam <= '9') {
-                    uint32_t idx = uint32_t(wParam - '1');
-                    if (idx < m_objectCount)
-                        m_activeObject = idx;
+                    EditorCommand command = {};
+                    command.type = EditorCommandType::DeleteActiveObject;
+                    ExecuteCommand(command);
                 }
             }
             handled = true;
@@ -1165,4 +1169,42 @@ bool App::DeleteActiveObject() {
         m_activeObject = m_objectCount - 1;
 
     return true;
+}
+
+bool App::ExecuteCommand(const EditorCommand& command) {
+    switch (command.type) {
+    case EditorCommandType::AddObject:
+        return AddObject(command.pos);
+
+    case EditorCommandType::DuplicateActiveObject:
+        return DuplicateActiveObject();
+
+    case EditorCommandType::DeleteActiveObject:
+        return DeleteActiveObject();
+
+    case EditorCommandType::SaveScene:
+        if (!command.path) return false;
+        return SaveSceneAem(command.path);
+
+    case EditorCommandType::LoadScene:
+        if (!command.path) return false;
+        return LoadSceneAem(command.path);
+
+    case EditorCommandType::SetActiveObject:
+        if (command.objectIndex >= m_objectCount) return false;
+        SetActiveObject(command.objectIndex);
+        return true;
+
+    case EditorCommandType::SetActiveTransform:
+        return SetActiveObjectTransform(command.pos, command.rot, command.scale);
+
+    case EditorCommandType::FocusCamera:
+        FocusCamera();
+        return true;
+
+    default:
+        break;
+    }
+
+    return false;
 }

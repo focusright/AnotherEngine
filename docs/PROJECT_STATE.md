@@ -1,78 +1,121 @@
 # PROJECT_STATE.md
 
-## Project
-AEDD — Another Engine Dark Defiance
+## Session
+v0.0.2 - Dev End
 
-## Current Version
-v0.0.2
+## Current Scope Status
 
-## Session Summary
-This session continued the v0.0.2 Editor command spine work against the updated baseline.
+### v0.0.2 remaining feature tasks
+1. Object transform gizmo expansion
+   - Rotate gizmo
+   - Scale gizmo
 
-The baseline already contained the first real command-spine slice:
-- `EditorCommands.h`
-- `App::ExecuteCommand(...)`
-- hotkeys routed through the command spine
-- ImGui buttons routed through the command spine
-
-This session did not introduce new code changes into the baseline. The main outcome was re-anchoring to the updated codebase and identifying the next smallest surgical step for the command spine.
-
-## Current Confirmed State
-
-### Completed in v0.0.2
-- Tetrahedron primitive
-- Object selection
-- Mouse object selection
+### v0.0.2 completed tasks
+- Tetrahedron primitive exists in scene
 - Minimal Dear ImGui integration
-- Object list
-- Add / Duplicate / Delete
-- Scene save/load (`.aem`)
-- Translate gizmo foundation
-- Initial Editor command spine slice:
-  - `EditorCommands.h`
-  - `App::ExecuteCommand(...)`
-  - hotkeys routed through the command spine
-  - ImGui action buttons routed through the command spine
+- Object list UI
+- Add / Duplicate / Delete object actions
+- Scene Save / Load with custom `.aem`
+- Mouse object selection
+- Vertex selection
+- World-space translate gizmo
+- Initial command spine
+- Command spine completion for current v0.0.2 scope
 
-### Remaining v0.0.2 Tasks
-1. Editor command spine
-2. Object rotate/scale gizmo
+## What Was Done This Session
 
-These remain the only two locked v0.0.2 tasks.
+### 1. Command spine completion finished
+We completed the remaining v0.0.2 command-spine work.
 
-## Exact Next Step
-Continue the Editor command spine by routing mouse object selection through `ExecuteCommand(...)` instead of calling `SetActiveObject(...)` directly.
+#### Completed command-spine routing
+- `F` focus now routes through `ExecuteCommand(...)`
+- Mouse viewport object selection now routes through `ExecuteCommand(...)`
+- Convenience overload added for payload-free commands:
+  - `ExecuteCommand(EditorCommandType type)`
 
-The next surgical changes are:
+#### Debug visibility
+- Last executed command tracking/readout added
 
-1. In `App.cpp`, replace direct mouse-pick object selection:
-   - from direct `SetActiveObject((uint32_t)hitObject);`
-   - to an `EditorCommand` with `EditorCommandType::SetActiveObject` sent through `ExecuteCommand(...)`
+### 2. Verified input behavior for focus shortcut
+We investigated the `F` shortcut path and confirmed:
+- `fPressed` is a one-frame pulse
+- It is cleared each frame by `BeginFrameInput()`
+- It does not need `WM_KEYUP` handling
+- The missing part was making sure `WM_KEYDOWN` for `F` actually sets it
 
-2. Add tiny last-command debug state:
-   - store last executed command name in `App`
-   - expose `LastCommandName()`
-   - display it in ImGui
+### 3. Pixel-perfect picking deferred
+We explicitly decided:
+- pixel-perfect object picking is a future feature
+- it is deferred for now
+- it should not affect current v0.0.2 work
 
-This is intended only as a debug/readout aid to verify the command spine is being used consistently.
+### 4. Translate gizmo extracted into its own class
+We performed the first gizmo refactor step:
+- current translate gizmo behavior was moved out of `App`
+- new files added:
+  - `Gizmo.h`
+  - `Gizmo.cpp`
 
-## Important Decisions Reconfirmed
-- The locked source of truth for remaining v0.0.2 work is:
-  1. Editor command spine
-  2. Object rotate/scale gizmo
-- Older internal docs in previous baselines that referenced translate gizmo bug fixing are stale and no longer the source of truth.
-- `enum class EditorCommandType` remains the correct internal representation for the command spine at this stage.
-- Do not expand the command spine into undo/redo, automation scripting, registries, or string-driven systems during v0.0.2.
-- Keep all work surgical and grounded in the actual baseline.
+Goal of this step was zero behavior change.
 
-## Known Non-v0.0.2 Note
-A shutdown bug was identified earlier:
-- ImGui DX12 backend shutdown was being called twice on exit
-- fix: keep ImGui shutdown ownership in one place only, rather than both `ShutdownImGui()` and `ShutdownD3D()`
+### 5. Fixed selection regression caused by gizmo refactor
+During gizmo extraction, object and vertex selection stopped working.
 
-This is not one of the two remaining v0.0.2 tasks, but it is a known cleanup/fix item already discussed.
+Root cause:
+- `SetActiveObject(...)` had been reduced to only `m_gizmo.Reset();`
+- it no longer assigned `m_activeObject`
 
-## Next Session Start Point
-Resume with the next Editor command spine step:
-- route mouse object selection through `ExecuteCommand(...)`
-- add the tiny last-command debug readout
+Fix:
+- restored real `SetActiveObject(...)` behavior
+- moved implementation out of `App.h` into `App.cpp`
+- this also fixed the `RenderMesh` incomplete-type compile error caused by accessing `m_renderMesh` members in an inline header function
+
+## Current Working State
+
+### Working
+- Object selection works
+- Vertex selection works
+- Translate gizmo works after extraction
+- Command spine works at current v0.0.2 scope
+- Last-command debug readout works
+
+### Deferred
+- Pixel-perfect object picking
+
+## Important Architecture Decisions Locked In
+
+### Rotate gizmo visual style
+Rotate rings should be:
+- simple
+- visually consistent with the current gizmo arms
+- 3 axis-color-coded rings
+- on the XY, XZ, and YZ planes
+
+### Gizmo architecture direction
+We are keeping the current simple gizmo and evolving it into a class hierarchy:
+- current gizmo should become the base/foundation class
+- fuller object transform gizmo should derive from it
+- simple gizmo remains useful later for vertex/edge manipulation
+
+## Next Planned Task
+
+### Next task
+Continue gizmo architecture refactor:
+
+1. Turn current gizmo into base/foundation class
+2. Add fuller object transform gizmo derived from it
+3. Add gizmo mode scaffolding:
+   - Translate
+   - Scale
+   - Rotate
+4. Keep behavior translate-only at first
+5. After that:
+   - implement Scale first
+   - implement Rotate second
+
+## Notes / Constraints To Preserve
+- Work in small surgical diffs
+- Do not invent APIs or structures not present in the actual codebase
+- Keep current simple gizmo available for future vertex/edge manipulation
+- Rotate gizmo rings must stay visually simple
+- Pixel-perfect picking is deferred and should not leak into current work

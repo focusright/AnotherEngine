@@ -573,40 +573,35 @@ void EndImGuiFrame() {
 
 void DrawSceneWindow() {
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(220, 210), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(260, 260), ImGuiCond_FirstUseEver);
     ImGui::Begin("Scene");
 
     if (ImGui::Button("Add")) {
-        EditorCommand command = {};
-        command.type = EditorCommandType::AddObject;
+        EditorCommand command = {EditorCommandType::AddObject};
         command.pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
         g_app.ExecuteCommand(command);
     }
     ImGui::SameLine();
     if (ImGui::Button("Duplicate")) {
-        EditorCommand command = {};
-        command.type = EditorCommandType::DuplicateActiveObject;
+        EditorCommand command = {EditorCommandType::DuplicateActiveObject};
         g_app.ExecuteCommand(command);
     }
     ImGui::SameLine();
     if (ImGui::Button("Delete")) {
-        EditorCommand command = {};
-        command.type = EditorCommandType::DeleteActiveObject;
+        EditorCommand command = {EditorCommandType::DeleteActiveObject};
         g_app.ExecuteCommand(command);
     }
 
     const wchar_t* scenePath = L"scene.aem";
 
     if (ImGui::Button("Save")) {
-        EditorCommand command = {};
-        command.type = EditorCommandType::SaveScene;
+        EditorCommand command = {EditorCommandType::SaveScene};
         command.path = scenePath;
         g_app.ExecuteCommand(command);
     }
     ImGui::SameLine();
     if (ImGui::Button("Load")) {
-        EditorCommand command = {};
-        command.type = EditorCommandType::LoadScene;
+        EditorCommand command = {EditorCommandType::LoadScene};
         command.path = scenePath;
         g_app.ExecuteCommand(command);
     }
@@ -619,13 +614,14 @@ void DrawSceneWindow() {
         sprintf_s(label, "Object %u", i);
         bool selected = (i == g_app.ActiveObject());
         if (ImGui::Selectable(label, selected)) {
-            EditorCommand command = {};
-            command.type = EditorCommandType::SetActiveObject;
+            EditorCommand command = {EditorCommandType::SetActiveObject};
             command.objectIndex = i;
             g_app.ExecuteCommand(command);
         }
     }
 
+    ImGui::Separator();
+    ImGui::Text("Last Command: %s", g_app.LastCommandName());
     ImGui::Separator();
 
     DirectX::XMFLOAT3 pos;
@@ -642,8 +638,7 @@ void DrawSceneWindow() {
         changed |= ImGui::DragFloat3("Scale", scaleEdit, 0.05f);
 
         if (changed) {
-            EditorCommand command = {};
-            command.type = EditorCommandType::SetActiveTransform;
+            EditorCommand command = {EditorCommandType::SetActiveTransform};
             command.pos = DirectX::XMFLOAT3(posEdit[0], posEdit[1], posEdit[2]);
             command.rot = DirectX::XMFLOAT3(rotEdit[0], rotEdit[1], rotEdit[2]);
             command.scale = DirectX::XMFLOAT3(scaleEdit[0], scaleEdit[1], scaleEdit[2]);

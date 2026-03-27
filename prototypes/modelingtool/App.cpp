@@ -11,6 +11,20 @@
 
 using namespace DirectX;
 
+static const char* CommandName(EditorCommandType type) {
+    switch (type) {
+    case EditorCommandType::AddObject: return "AddObject";
+    case EditorCommandType::DuplicateActiveObject: return "DuplicateActiveObject";
+    case EditorCommandType::DeleteActiveObject: return "DeleteActiveObject";
+    case EditorCommandType::SetActiveObject: return "SetActiveObject";
+    case EditorCommandType::SaveScene: return "SaveScene";
+    case EditorCommandType::LoadScene: return "LoadScene";
+    case EditorCommandType::SetActiveTransform: return "SetActiveTransform";
+    case EditorCommandType::FocusCamera: return "FocusCamera";
+    default: return "None";
+    }
+}
+
 App::App(EditorCamera& camera) : m_camera(camera) {
     m_ctx.camera = &m_camera;
 
@@ -201,7 +215,9 @@ void App::Update(float dt) {
     }
 
     // Focus.
-    if (m_input.fPressed && !m_isDragging) { FocusCamera(); }
+    if (m_input.fPressed && !m_isDragging) {
+        ExecuteCommand(EditorCommandType::FocusCamera);
+    }
 
     // Object move (when not in RMB-fly mode).
     // Layer note: this is "app/input"... no D3D12 layer yet; we just update transforms.
@@ -248,7 +264,9 @@ void App::Update(float dt) {
                 int hitObject = HitTestObject(m_input.mouseX, m_input.mouseY);
 
                 if (hitObject != -1) {
-                    SetActiveObject((uint32_t)hitObject);
+                    EditorCommand command = {EditorCommandType::SetActiveObject};
+                    command.objectIndex = (uint32_t)hitObject;
+                    ExecuteCommand(command);
                 } else {
                     m_selectedVertex = -1;
 
@@ -416,37 +434,34 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
                 bool wasDown = (lParam & (1 << 30)) != 0;
                 m_input.keys[wParam] = true;
 
+                if (!wasDown && wParam == 'F') {
+                    m_input.fPressed = true;
+                }
+
                 if (!wasDown && wParam == 'S' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
-                    EditorCommand command = {};
-                    command.type = EditorCommandType::SaveScene;
+                    EditorCommand command = {EditorCommandType::SaveScene};
                     command.path = L"scene.aem";
                     ExecuteCommand(command);
                 }
 
                 if (!wasDown && wParam == 'O' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
-                    EditorCommand command = {};
-                    command.type = EditorCommandType::LoadScene;
+                    EditorCommand command = {EditorCommandType::LoadScene};
                     command.path = L"scene.aem";
                     ExecuteCommand(command);
                 }
 
                 if (!wasDown && wParam == 'N') {
-                    EditorCommand command = {};
-                    command.type = EditorCommandType::AddObject;
+                    EditorCommand command = {EditorCommandType::AddObject};
                     command.pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
                     ExecuteCommand(command);
                 }
 
                 if (!wasDown && wParam == 'D' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
-                    EditorCommand command = {};
-                    command.type = EditorCommandType::DuplicateActiveObject;
-                    ExecuteCommand(command);
+                    ExecuteCommand(EditorCommandType::DuplicateActiveObject);
                 }
 
                 if (!wasDown && wParam == VK_DELETE) {
-                    EditorCommand command = {};
-                    command.type = EditorCommandType::DeleteActiveObject;
-                    ExecuteCommand(command);
+                    ExecuteCommand(EditorCommandType::DeleteActiveObject);
                 }
             }
             handled = true;
@@ -1171,40 +1186,58 @@ bool App::DeleteActiveObject() {
     return true;
 }
 
+bool App::ExecuteCommand(EditorCommandType type) {
+    return ExecuteCommand(EditorCommand{ type });
+}
+
 bool App::ExecuteCommand(const EditorCommand& command) {
+    bool ok = false;
+
     switch (command.type) {
     case EditorCommandType::AddObject:
-        return AddObject(command.pos);
+        ok = AddObject(command.pos);
+        break;
 
     case EditorCommandType::DuplicateActiveObject:
-        return DuplicateActiveObject();
+        ok = DuplicateActiveObject();
+        break;
 
     case EditorCommandType::DeleteActiveObject:
-        return DeleteActiveObject();
+        ok = DeleteActiveObject();
+        break;
 
     case EditorCommandType::SaveScene:
         if (!command.path) return false;
-        return SaveSceneAem(command.path);
+        ok = SaveSceneAem(command.path);
+        break;
 
     case EditorCommandType::LoadScene:
         if (!command.path) return false;
-        return LoadSceneAem(command.path);
+        ok = LoadSceneAem(command.path);
+        break;
 
     case EditorCommandType::SetActiveObject:
         if (command.objectIndex >= m_objectCount) return false;
         SetActiveObject(command.objectIndex);
-        return true;
+        ok = true;
+        break;
 
     case EditorCommandType::SetActiveTransform:
-        return SetActiveObjectTransform(command.pos, command.rot, command.scale);
+        ok = SetActiveObjectTransform(command.pos, command.rot, command.scale);
+        break;
 
     case EditorCommandType::FocusCamera:
         FocusCamera();
-        return true;
+        ok = true;
+        break;
 
     default:
-        break;
+        return false;
     }
 
-    return false;
+    if (ok) {
+        m_lastCommandName = CommandName(command.type);
+    }
+
+    return ok;
 }

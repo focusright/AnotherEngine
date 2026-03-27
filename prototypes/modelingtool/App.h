@@ -51,7 +51,9 @@ public:
     bool GetActiveObjectTransform(DirectX::XMFLOAT3& pos, DirectX::XMFLOAT3& rot, DirectX::XMFLOAT3& scale) const;
     bool SetActiveObjectTransform(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT3& rot, const DirectX::XMFLOAT3& scale);
 
+    bool ExecuteCommand(EditorCommandType type);
     bool ExecuteCommand(const EditorCommand& command);
+    const char* LastCommandName() const { return m_lastCommandName; }
 private:
     struct InputState {
         int mouseX = 0;
@@ -96,6 +98,7 @@ private:
     float m_orbitDistance = 10.0f;
 
     EditorContext m_ctx;
+    const char* m_lastCommandName = "None";
 
     static const uint32_t kMaxObjects = 16;
     uint32_t m_objectCount = 2;

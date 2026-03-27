@@ -8,6 +8,7 @@
 #include "EditorCamera.h"
 #include "EditorContext.h"
 #include "EditorCommands.h"
+#include "Gizmo.h"
 
 struct EditableMesh;
 struct RenderMesh;
@@ -29,17 +30,7 @@ public:
 
     uint32_t ObjectCount() const { return m_objectCount; }
     uint32_t ActiveObject() const { return m_activeObject; }
-
-    void SetActiveObject(uint32_t index) {
-        if (index >= m_objectCount) return;
-        if (m_activeObject == index) return;
-
-        m_activeObject = index;
-        m_selectedVertex = -1;
-        m_gizmoDragging = false;
-        m_gizmoActiveAxis = -1;
-        m_gizmoHotAxis = -1;
-    }
+    void SetActiveObject(uint32_t index);
 
     bool AddObject(const DirectX::XMFLOAT3& pos);
     bool DuplicateActiveObject();
@@ -108,21 +99,10 @@ private:
     DirectX::XMFLOAT3 m_objectScale[kMaxObjects] = {};
     DirectX::XMFLOAT4 m_objectColor[kMaxObjects] = {}; // per-object tint (saved)
 
-    // Translate gizmo (world-space)
-    static const uint32_t kGizmoVertexCount = 18; // 3 axes * (2 triangles * 3 verts) = 18
-    static constexpr float kGizmoAxisLen = 1.25f;
-    static constexpr float kGizmoPickThresh = 0.15f;
-    int m_gizmoActiveAxis = -1; // 0=X,1=Y,2=Z
-    int m_gizmoHotAxis = -1;    // hover highlight (when not dragging)
-    bool m_gizmoDragging = false;
-    float m_gizmoDragT0 = 0.0f;
-    DirectX::XMFLOAT3 m_gizmoStartPos = { 0,0,0 };
+    Gizmo m_gizmo;
 
     int HitTestVertex(int mouseX, int mouseY);
     int HitTestObject(int mouseX, int mouseY) const;
-    void UpdateGizmo();
-    bool GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis);
-    bool GizmoComputeTOnAxis(int axis, int mouseX, int mouseY, float& outTOnAxis);
     bool ScreenToWorldOnZPlane(int screenX, int screenY, float& worldX, float& worldY);
     DirectX::XMFLOAT3 LocalVertexToWorld(const DirectX::XMFLOAT3& p) const;
     DirectX::XMFLOAT3 WorldPointToLocal(const DirectX::XMFLOAT3& p) const;

@@ -238,11 +238,29 @@ void App::Update(float dt) {
     }
 
     // 1) On press: gizmo first, then active-object vertex, then object selection.
-    if (!m_input.rmbDown && m_input.lmbPressed && !m_gizmoDragging) {
-        int axis = -1;
-        float t0 = 0.0f;
+    if (!m_input.rmbDown && m_input.lmbPressed && !m_gizmo.IsDragging()) {
+        bool overGizmo = false;
 
-        if (!GizmoPickAxis(m_input.mouseX, m_input.mouseY, axis, t0)) {
+        if (m_activeObject < m_objectCount) {
+            int axis = -1;
+            float t0 = 0.0f;
+
+            overGizmo = m_gizmo.PickAxis(
+                m_camera,
+                m_editMesh,
+                m_activeObject,
+                m_selectedVertex,
+                m_objectPos[m_activeObject],
+                m_objectRot[m_activeObject],
+                m_objectScale[m_activeObject],
+                m_input.mouseX,
+                m_input.mouseY,
+                axis,
+                t0
+            );
+        }
+
+        if (!overGizmo) {
             int hitVertex = HitTestVertex(m_input.mouseX, m_input.mouseY);
 
             if (hitVertex != -1) {
@@ -264,7 +282,7 @@ void App::Update(float dt) {
                 int hitObject = HitTestObject(m_input.mouseX, m_input.mouseY);
 
                 if (hitObject != -1) {
-                    EditorCommand command = {EditorCommandType::SetActiveObject};
+                    EditorCommand command{ EditorCommandType::SetActiveObject };
                     command.objectIndex = (uint32_t)hitObject;
                     ExecuteCommand(command);
                 } else {
@@ -337,7 +355,32 @@ void App::Update(float dt) {
         m_engine->SetDebugPivotIndex(0xFFFFFFFFu);
     }
 
-    UpdateGizmo();
+    bool renderMeshDirty = false;
+
+    m_gizmo.Update(
+        m_engine,
+        m_hwnd,
+        m_camera,
+        m_editMesh,
+        m_renderMesh,
+        m_activeObject,
+        m_selectedVertex,
+        m_objectPos[m_activeObject],
+        m_objectRot[m_activeObject],
+        m_objectScale[m_activeObject],
+        m_input.rmbDown,
+        m_input.rmbPressed,
+        m_input.lmbDown,
+        m_input.lmbPressed,
+        m_input.lmbReleased,
+        m_input.mouseX,
+        m_input.mouseY,
+        m_objectPos[m_activeObject],
+        renderMeshDirty
+    );
+
+    if (renderMeshDirty)
+        m_renderMesh->dirty = true;
 
     m_engine->SetSelectedObject(m_activeObject);
 
@@ -815,323 +858,21 @@ bool App::SetActiveObjectTransform(const DirectX::XMFLOAT3& pos, const DirectX::
     return true;
 }
 
-bool App::GizmoPickAxis(int mouseX, int mouseY, int& outAxis, float& outTOnAxis) { //outAxis: 0=X, 1=Y, 2=Z. outTOnAxis: "raw parameter t along the infinite axis line" at the closest point
-    // Pick the closest axis by ray-to-segment distance.
-    // We use a conservative threshold in world units.
-    DirectX::XMFLOAT3 ro, rd;
-    m_camera.BuildRayFromScreen(float(mouseX), float(mouseY), ro, rd);
+void App::SetActiveObject(uint32_t index) {
+    if (index >= m_objectCount)
+        return;
 
-    DirectX::XMFLOAT3 o;
+    m_activeObject = index;
+    m_selectedVertex = -1;
+    m_isDragging = false;
+    m_gizmo.Reset();
 
-    if (m_selectedVertex != -1) {
-        DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
-        o = LocalVertexToWorld(p);
-    } else {
-        o = m_objectPos[m_activeObject];
-    }
-
-    const float axisLen = kGizmoAxisLen;
-
-    auto testAxis = [&](int axis, const DirectX::XMFLOAT3& dir, float& outTRaw, float& outDistSq) { //outTRaw: parameter t on the infinite axis line. outDistSq: squared distance between the mouse ray and the clamped segment
-        // Segment [o, o + dir*axisLen]
-        DirectX::XMVECTOR RO = DirectX::XMLoadFloat3(&ro); // Ray origin
-        DirectX::XMVECTOR RD = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&rd)); // Ray direction
-        DirectX::XMVECTOR O = DirectX::XMLoadFloat3(&o); // Object Origin
-        DirectX::XMVECTOR D = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&dir)); // Axis direction
-        DirectX::XMVECTOR P1 = O;
-        DirectX::XMVECTOR P2 = DirectX::XMVectorAdd(O, DirectX::XMVectorScale(D, axisLen));
-
-        // Compute closest points between ray (RO + u*RD, u>=0) and infinite line (P1 + t*D).
-        DirectX::XMVECTOR w0 = DirectX::XMVectorSubtract(RO, P1);
-        float a = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, RD));
-        float b = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, D));
-        float c = DirectX::XMVectorGetX(DirectX::XMVector3Dot(D, D));
-        float d = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, w0));
-        float e = DirectX::XMVectorGetX(DirectX::XMVector3Dot(D, w0));
-        float denom = a * c - b * b;
-
-        float u = 0.0f;
-        float t = 0.0f;
-        if (fabsf(denom) > 1e-6f) {
-            u = (b * e - c * d) / denom;
-            t = (a * e - b * d) / denom;
+    if (m_renderMesh && m_colorsInit) {
+        for (int i = 0; i < 12; ++i) {
+            m_renderMesh->drawVertices[i].color = m_baseColors[i];
         }
 
-        if (u < 0.0f) u = 0.0f;
-
-        // Keep the raw t (infinite line) so drag doesn't "jump" when leaving the handle segment.
-        outTRaw = t;
-
-        // Clamp t to segment.
-        if (t < 0.0f) t = 0.0f;
-        if (t > axisLen) t = axisLen;
-
-        DirectX::XMVECTOR C0 = DirectX::XMVectorAdd(RO, DirectX::XMVectorScale(RD, u));
-        DirectX::XMVECTOR C1 = DirectX::XMVectorAdd(P1, DirectX::XMVectorScale(D, t));
-        DirectX::XMVECTOR diff = DirectX::XMVectorSubtract(C0, C1);
-        outDistSq = DirectX::XMVectorGetX(DirectX::XMVector3Dot(diff, diff));
-    };
-
-    float bestDistSq = 1e30f;
-    int bestAxis = -1;
-
-    float tRaw, dsq;
-    float bestTRaw = 0.0f;
-
-    testAxis(0, DirectX::XMFLOAT3(1, 0, 0), tRaw, dsq);
-    if (dsq < bestDistSq) { bestDistSq = dsq; bestAxis = 0; bestTRaw = tRaw; }
-
-    testAxis(1, DirectX::XMFLOAT3(0, 1, 0), tRaw, dsq);
-    if (dsq < bestDistSq) { bestDistSq = dsq; bestAxis = 1; bestTRaw = tRaw; }
-
-    testAxis(2, DirectX::XMFLOAT3(0, 0, 1), tRaw, dsq);
-    if (dsq < bestDistSq) { bestDistSq = dsq; bestAxis = 2; bestTRaw = tRaw; }
-
-    // Threshold: tune for your world scale (tetra size ~0.8)
-    const float thresh = kGizmoPickThresh;
-    if (bestDistSq > thresh * thresh) return false;
-
-    outAxis = bestAxis;
-    outTOnAxis = bestTRaw;
-    return true;
-}
-
-bool App::GizmoComputeTOnAxis(int axis, int mouseX, int mouseY, float& outTOnAxis) {
-    DirectX::XMFLOAT3 ro, rd;
-    m_camera.BuildRayFromScreen(float(mouseX), float(mouseY), ro, rd);
-
-    DirectX::XMFLOAT3 o;
-
-    if (m_selectedVertex != -1) {
-        DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
-        o = LocalVertexToWorld(p);
-    } else {
-        o = m_objectPos[m_activeObject];
-    }
-
-    // While dragging, keep the axis origin fixed to the start-of-drag position,
-    // otherwise 't' is measured against a moving origin and the object will flicker.
-    if (m_gizmoDragging && m_gizmoActiveAxis == axis) o = m_gizmoStartPos;
-
-    DirectX::XMFLOAT3 dir = (axis == 0) ? DirectX::XMFLOAT3(1, 0, 0) : (axis == 1) ? DirectX::XMFLOAT3(0, 1, 0) : DirectX::XMFLOAT3(0, 0, 1);
-
-    // Stable drag: intersect the mouse ray with a plane that contains the axis line and is as
-    // perpendicular to the camera view direction as possible.
-    DirectX::XMVECTOR RO = DirectX::XMLoadFloat3(&ro);
-    DirectX::XMVECTOR RD = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&rd));
-    DirectX::XMVECTOR O = DirectX::XMLoadFloat3(&o);
-    DirectX::XMVECTOR A = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&dir));
-
-    DirectX::XMFLOAT3 camF = m_camera.Forward();
-    DirectX::XMVECTOR V = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&camF));
-
-    // n = axis x (view x axis)  == view projected perpendicular to axis (up to scale).
-    DirectX::XMVECTOR n = DirectX::XMVector3Cross(A, DirectX::XMVector3Cross(V, A));
-    float nLenSq = DirectX::XMVectorGetX(DirectX::XMVector3Dot(n, n));
-
-    if (nLenSq < 1e-8f) {
-        // View almost parallel to axis. Pick a fallback vector not parallel to the axis.
-        DirectX::XMVECTOR fallback = (fabsf(DirectX::XMVectorGetY(A)) < 0.9f) ? DirectX::XMVectorSet(0, 1, 0, 0) : DirectX::XMVectorSet(1, 0, 0, 0);
-        n = DirectX::XMVector3Cross(A, DirectX::XMVector3Cross(fallback, A));
-        nLenSq = DirectX::XMVectorGetX(DirectX::XMVector3Dot(n, n));
-        if (nLenSq < 1e-8f) return false;
-    }
-
-    n = DirectX::XMVector3Normalize(n);
-
-    float denom = DirectX::XMVectorGetX(DirectX::XMVector3Dot(RD, n));
-    if (fabsf(denom) < 1e-6f) return false;
-
-    float u = DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVectorSubtract(O, RO), n)) / denom;
-    if (u < 0.0f) u = 0.0f;
-
-    DirectX::XMVECTOR P = DirectX::XMVectorAdd(RO, DirectX::XMVectorScale(RD, u));
-    float t = DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVectorSubtract(P, O), A));
-    outTOnAxis = t;
-    return true;
-}
-
-void App::UpdateGizmo() {
-    if (!m_engine) return;
-    if (m_activeObject >= m_objectCount) return;
-
-    // Hover highlight (when not dragging and not in RMB-fly).
-    if (!m_gizmoDragging && !m_input.rmbDown) {
-        m_gizmoHotAxis = -1;
-        int axis = -1;
-        float t = 0.0f;
-        if (GizmoPickAxis(m_input.mouseX, m_input.mouseY, axis, t)) {
-            m_gizmoHotAxis = axis;
-        }
-    } else {
-        m_gizmoHotAxis = -1;
-    }
-
-    // 1) Render gizmo (always at active object's position).
-    {
-        Vertex gizmo[kGizmoVertexCount] = {};
-
-        DirectX::XMFLOAT3 o;
-
-        if (m_selectedVertex != -1) {
-            DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
-            o = LocalVertexToWorld(p);
-        } else {
-            o = m_objectPos[m_activeObject];
-        }
-
-        const float len = kGizmoAxisLen;
-
-        auto hotColor = DirectX::XMFLOAT4(1, 1, 1, 1);
-        auto activeColor = DirectX::XMFLOAT4(1, 1, 0, 1);
-
-        DirectX::XMFLOAT4 colX = DirectX::XMFLOAT4(1, 0, 0, 1);
-        DirectX::XMFLOAT4 colY = DirectX::XMFLOAT4(0, 1, 0, 1);
-        DirectX::XMFLOAT4 colZ = DirectX::XMFLOAT4(0.2f, 0.5f, 1, 1);
-
-        if (m_gizmoActiveAxis == 0) colX = activeColor; else if (m_gizmoHotAxis == 0) colX = hotColor;
-        if (m_gizmoActiveAxis == 1) colY = activeColor; else if (m_gizmoHotAxis == 1) colY = hotColor;
-        if (m_gizmoActiveAxis == 2) colZ = activeColor; else if (m_gizmoHotAxis == 2) colZ = hotColor;
-
-        // Screen thickness control (in pixels)
-        const float thicknessPx = 3.0f;
-
-        // Viewport height in pixels
-        RECT rc;
-        GetClientRect(m_hwnd, &rc);
-        float viewH = float(rc.bottom - rc.top);
-        if (viewH < 1.0f) viewH = 1.0f;
-
-        DirectX::XMFLOAT3 camPos = m_camera.Position();
-        DirectX::XMFLOAT3 camFwd = m_camera.Forward();
-        DirectX::XMFLOAT3 camRight = m_camera.Right();
-
-        auto addAxisQuad = [&](int baseIndex, const DirectX::XMFLOAT3& axisDir, const DirectX::XMFLOAT4& col) {
-            // Segment endpoints
-            DirectX::XMFLOAT3 p0 = o;
-            DirectX::XMFLOAT3 p1 = DirectX::XMFLOAT3(o.x + axisDir.x * len, o.y + axisDir.y * len, o.z + axisDir.z * len);
-
-            // Depth at each endpoint along camera forward
-            DirectX::XMFLOAT3 toP0 = DirectX::XMFLOAT3(p0.x - camPos.x, p0.y - camPos.y, p0.z - camPos.z);
-            DirectX::XMFLOAT3 toP1 = DirectX::XMFLOAT3(p1.x - camPos.x, p1.y - camPos.y, p1.z - camPos.z);
-
-            float z0 = toP0.x * camFwd.x + toP0.y * camFwd.y + toP0.z * camFwd.z;
-            float z1 = toP1.x * camFwd.x + toP1.y * camFwd.y + toP1.z * camFwd.z;
-
-            if (z0 < 0.05f) z0 = 0.05f;
-            if (z1 < 0.05f) z1 = 0.05f;
-
-            // Convert desired pixel thickness into world thickness at each endpoint
-            float tanHalfFov = std::tan(m_camera.FovY() * 0.5f);
-
-            float worldThickness0 = thicknessPx * (2.0f * z0 * tanHalfFov) / viewH; //The higher the depth (z) the smaller the world thickness
-            float worldThickness1 = thicknessPx * (2.0f * z1 * tanHalfFov) / viewH; //This creates a perspective effect where the gizmo gets thinner as it extends into the distance, a trapezoid.
-
-            float halfW0 = worldThickness0 * 0.5f; //Using halfW0 at p0 and halfW1 at p1 makes a trapezoid that keeps thickness consistent along the axis.
-            float halfW1 = worldThickness1 * 0.5f;
-
-            // Compute side direction = cross(axisDir, camFwd)
-            DirectX::XMFLOAT3 sideDir = DirectX::XMFLOAT3(
-                axisDir.y * camFwd.z - axisDir.z * camFwd.y,
-                axisDir.z * camFwd.x - axisDir.x * camFwd.z,
-                axisDir.x * camFwd.y - axisDir.y * camFwd.x
-            );
-
-            float sideLen = std::sqrt(sideDir.x * sideDir.x + sideDir.y * sideDir.y + sideDir.z * sideDir.z);
-
-            // If axis nearly parallel to camera forward, fall back to camera right
-            if (sideLen < 1e-4f) {
-                sideDir = camRight;
-                sideLen = std::sqrt(sideDir.x * sideDir.x + sideDir.y * sideDir.y + sideDir.z * sideDir.z);
-            }
-
-            // Normalize
-            sideDir.x /= sideLen;
-            sideDir.y /= sideLen;
-            sideDir.z /= sideLen;
-
-            // Scale separately for each endpoint (trapezoid)
-            DirectX::XMFLOAT3 side0 = DirectX::XMFLOAT3(sideDir.x * halfW0, sideDir.y * halfW0, sideDir.z * halfW0);
-            DirectX::XMFLOAT3 side1 = DirectX::XMFLOAT3(sideDir.x * halfW1, sideDir.y * halfW1, sideDir.z * halfW1);
-
-            // Quad corners
-            DirectX::XMFLOAT3 a = DirectX::XMFLOAT3(p0.x + side0.x, p0.y + side0.y, p0.z + side0.z);
-            DirectX::XMFLOAT3 b = DirectX::XMFLOAT3(p1.x + side1.x, p1.y + side1.y, p1.z + side1.z);
-            DirectX::XMFLOAT3 c = DirectX::XMFLOAT3(p1.x - side1.x, p1.y - side1.y, p1.z - side1.z);
-            DirectX::XMFLOAT3 d = DirectX::XMFLOAT3(p0.x - side0.x, p0.y - side0.y, p0.z - side0.z);
-
-            // Triangle 1
-            gizmo[baseIndex + 0] = { a, col };
-            gizmo[baseIndex + 1] = { b, col };
-            gizmo[baseIndex + 2] = { c, col };
-
-            // Triangle 2
-            gizmo[baseIndex + 3] = { a, col };
-            gizmo[baseIndex + 4] = { c, col };
-            gizmo[baseIndex + 5] = { d, col };
-        };
-
-        addAxisQuad(0, DirectX::XMFLOAT3(1, 0, 0), colX);
-        addAxisQuad(6, DirectX::XMFLOAT3(0, 1, 0), colY);
-        addAxisQuad(12, DirectX::XMFLOAT3(0, 0, 1), colZ);
-
-        m_engine->UpdateGizmoVertices(gizmo, kGizmoVertexCount, m_hwnd);
-    }
-
-    // 2) Input: start drag on LMB press (only when not in RMB-fly mode).
-    if (!m_input.rmbDown && m_input.lmbPressed && !m_gizmoDragging) {
-        int axis = -1;
-        float t0 = 0.0f;
-        if (GizmoPickAxis(m_input.mouseX, m_input.mouseY, axis, t0)) {
-            m_gizmoActiveAxis = axis;
-            m_gizmoDragging = true;
-
-            if (m_selectedVertex != -1) {
-                DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
-                m_gizmoStartPos = LocalVertexToWorld(p);
-            } else {
-                m_gizmoStartPos = m_objectPos[m_activeObject];
-            }
-
-            // Use the same t-computation as the drag loop to avoid a 1-frame jump.
-            if (!GizmoComputeTOnAxis(m_gizmoActiveAxis, m_input.mouseX, m_input.mouseY, m_gizmoDragT0))
-                m_gizmoDragT0 = t0;
-        }
-    }
-
-    // 3) While dragging: update object position or vertex position.
-    if (m_gizmoDragging && m_input.lmbDown && m_gizmoActiveAxis != -1) {
-        float t = 0.0f;
-        if (GizmoComputeTOnAxis(m_gizmoActiveAxis, m_input.mouseX, m_input.mouseY, t)) {
-            float dt = t - m_gizmoDragT0;
-            DirectX::XMFLOAT3 axisDir = (m_gizmoActiveAxis == 0) ? DirectX::XMFLOAT3(1, 0, 0) : (m_gizmoActiveAxis == 1) ? DirectX::XMFLOAT3(0, 1, 0) : DirectX::XMFLOAT3(0, 0, 1);
-
-            DirectX::XMFLOAT3 newPos(
-                m_gizmoStartPos.x + axisDir.x * dt,
-                m_gizmoStartPos.y + axisDir.y * dt,
-                m_gizmoStartPos.z + axisDir.z * dt
-            );
-
-            if (m_selectedVertex != -1) {
-                DirectX::XMFLOAT3 localPos = WorldPointToLocal(newPos);
-                m_editMesh->SetVertex((VertexID)m_selectedVertex, localPos);
-                m_renderMesh->dirty = true;
-            } else {
-                m_objectPos[m_activeObject] = newPos;
-            }
-        }
-    }
-
-    // 4) End drag.
-    if (m_gizmoDragging && m_input.lmbReleased) {
-        m_gizmoDragging = false;
-        m_gizmoActiveAxis = -1;
-    }
-
-    // RMB-fly should cancel gizmo drag immediately.
-    if (m_gizmoDragging && m_input.rmbPressed) {
-        m_gizmoDragging = false;
-        m_gizmoActiveAxis = -1;
+        m_renderMesh->dirty = true;
     }
 }
 

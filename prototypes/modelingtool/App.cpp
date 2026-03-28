@@ -20,6 +20,7 @@ static const char* CommandName(EditorCommandType type) {
     case EditorCommandType::SaveScene: return "SaveScene";
     case EditorCommandType::LoadScene: return "LoadScene";
     case EditorCommandType::SetActiveTransform: return "SetActiveTransform";
+    case EditorCommandType::SetGizmoMode: return "SetGizmoMode";
     case EditorCommandType::FocusCamera: return "FocusCamera";
     default: return "None";
     }
@@ -965,6 +966,12 @@ bool App::ExecuteCommand(const EditorCommand& command) {
 
     case EditorCommandType::SetActiveTransform:
         ok = SetActiveObjectTransform(command.pos, command.rot, command.scale);
+        break;
+
+    case EditorCommandType::SetGizmoMode:
+        if (command.gizmoMode > (uint32_t)GizmoMode::Rotate) return false;
+        SetGizmoMode((GizmoMode)command.gizmoMode);
+        ok = true;
         break;
 
     case EditorCommandType::FocusCamera:

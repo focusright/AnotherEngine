@@ -18,6 +18,7 @@ enum class EditorCommandType {
 
     // Transform commands
     SetActiveTransform,
+    SetGizmoMode,
     FocusCamera
 };
 
@@ -25,6 +26,7 @@ struct EditorCommand {
     EditorCommandType type = EditorCommandType::None;
 
     uint32_t objectIndex = 0;
+    uint32_t gizmoMode = 0;
     const wchar_t* path = nullptr;
 
     DirectX::XMFLOAT3 pos = { 0.0f, 0.0f, 0.0f };

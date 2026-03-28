@@ -624,6 +624,32 @@ void DrawSceneWindow() {
     ImGui::Text("Last Command: %s", g_app.LastCommandName());
     ImGui::Separator();
 
+    ImGui::Text("Gizmo Mode: %s", g_app.GizmoModeName());
+
+    if (ImGui::Button("Translate")) {
+        EditorCommand command = { EditorCommandType::SetGizmoMode };
+        command.gizmoMode = (uint32_t)GizmoMode::Translate;
+        g_app.ExecuteCommand(command);
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Scale")) {
+        EditorCommand command = { EditorCommandType::SetGizmoMode };
+        command.gizmoMode = (uint32_t)GizmoMode::Scale;
+        g_app.ExecuteCommand(command);
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Rotate")) {
+        EditorCommand command = { EditorCommandType::SetGizmoMode };
+        command.gizmoMode = (uint32_t)GizmoMode::Rotate;
+        g_app.ExecuteCommand(command);
+    }
+
+    ImGui::Separator();
+
     DirectX::XMFLOAT3 pos;
     DirectX::XMFLOAT3 rot;
     DirectX::XMFLOAT3 scale;

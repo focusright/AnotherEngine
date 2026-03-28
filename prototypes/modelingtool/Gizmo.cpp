@@ -16,6 +16,23 @@ void Gizmo::Reset() {
     m_startPos = XMFLOAT3(0.0f, 0.0f, 0.0f);
 }
 
+void Gizmo::SetMode(GizmoMode mode) {
+    if (m_mode == mode)
+        return;
+
+    Reset();
+    m_mode = mode;
+}
+
+const char* Gizmo::ModeName() const {
+    switch (m_mode) {
+    case GizmoMode::Translate: return "Translate";
+    case GizmoMode::Scale: return "Scale";
+    case GizmoMode::Rotate: return "Rotate";
+    default: return "Unknown";
+    }
+}
+
 XMFLOAT3 Gizmo::LocalVertexToWorld(const XMFLOAT3& point, const XMFLOAT3& objectPos, const XMFLOAT3& objectRot, const XMFLOAT3& objectScale) const {
     XMMATRIX scaleMat = XMMatrixScaling(objectScale.x, objectScale.y, objectScale.z);
     XMMATRIX rotMat = XMMatrixRotationRollPitchYaw(objectRot.x, objectRot.y, objectRot.z);

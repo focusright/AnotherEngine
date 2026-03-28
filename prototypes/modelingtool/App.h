@@ -47,8 +47,8 @@ public:
     const char* LastCommandName() const { return m_lastCommandName; }
 
     void SetGizmoMode(GizmoMode mode) { m_gizmo.SetMode(mode); }
-    GizmoMode GetGizmoMode() const { return m_gizmo.Mode(); }
-    const char* GizmoModeName() const { return m_gizmo.ModeName(); }
+    GizmoMode GetGizmoMode() const { return m_gizmo.GetMode(); }
+    const char* GizmoModeName() const { return m_gizmo.GetModeName(); }
 
 private:
     struct InputState {

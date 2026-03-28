@@ -24,7 +24,7 @@ void Gizmo::SetMode(GizmoMode mode) {
     m_mode = mode;
 }
 
-const char* Gizmo::ModeName() const {
+const char* Gizmo::GetModeName() const {
     switch (m_mode) {
     case GizmoMode::Translate: return "Translate";
     case GizmoMode::Scale: return "Scale";

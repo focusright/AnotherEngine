@@ -22,13 +22,14 @@ public:
 
     void Reset();
     void SetMode(GizmoMode mode);
-    GizmoMode Mode() const { return m_mode; }
-    const char* ModeName() const;
+    GizmoMode GetMode() const { return m_mode; }
+    const char* GetModeName() const;
 
     bool IsDragging() const { return m_dragging; }
     int ActiveAxis() const { return m_activeAxis; }
     int HotAxis() const { return m_hotAxis; }
 
+    //Given the current mouse position, which gizmo axis is the user pointing at?
     bool PickAxis(EditorCamera& camera, EditableMesh* editMesh, uint32_t activeObject, int selectedVertex, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale, int mouseX, int mouseY, int& outAxis, float& outTOnAxis);
     bool ComputeTOnAxis(EditorCamera& camera, EditableMesh* editMesh, uint32_t activeObject, int selectedVertex, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale, int axis, int mouseX, int mouseY, float& outTOnAxis);
     

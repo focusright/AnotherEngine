@@ -246,14 +246,17 @@ void App::Update(float dt) {
             int axis = -1;
             float t0 = 0.0f;
 
+            GizmoTarget target = {};
+            target.editMesh = m_editMesh;
+            target.activeObject = m_activeObject;
+            target.selectedVertex = m_selectedVertex;
+            target.objectPos = m_objectPos[m_activeObject];
+            target.objectRot = m_objectRot[m_activeObject];
+            target.objectScale = m_objectScale[m_activeObject];
+
             overGizmo = m_gizmo.PickAxis(
                 m_camera,
-                m_editMesh,
-                m_activeObject,
-                m_selectedVertex,
-                m_objectPos[m_activeObject],
-                m_objectRot[m_activeObject],
-                m_objectScale[m_activeObject],
+                target,
                 m_input.mouseX,
                 m_input.mouseY,
                 axis,

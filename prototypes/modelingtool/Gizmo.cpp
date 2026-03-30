@@ -64,23 +64,23 @@ XMFLOAT3 Gizmo::WorldPointToLocal(const XMFLOAT3& point, const XMFLOAT3& objectP
     return out;
 }
 
-XMFLOAT3 Gizmo::GetOrigin(EditableMesh* editMesh, int selectedVertex, const XMFLOAT3& objectPos, const XMFLOAT3& objectRot, const XMFLOAT3& objectScale) const {
-    if (selectedVertex != -1) {
-        XMFLOAT3 localPos = editMesh->GetVertex((VertexID)selectedVertex);
-        return LocalVertexToWorld(localPos, objectPos, objectRot, objectScale);
+XMFLOAT3 Gizmo::GetOrigin(const GizmoTarget& target) const {
+    if (target.selectedVertex != -1) {
+        XMFLOAT3 localPos = target.editMesh->GetVertex((VertexID)target.selectedVertex);
+        return LocalVertexToWorld(localPos, target.objectPos, target.objectRot, target.objectScale);
     }
 
-    return objectPos;
+    return target.objectPos;
 }
 
-bool Gizmo::PickAxis(EditorCamera& camera, EditableMesh* editMesh, uint32_t activeObject, int selectedVertex, const XMFLOAT3& objectPos, const XMFLOAT3& objectRot, const XMFLOAT3& objectScale, int mouseX, int mouseY, int& outAxis, float& outTOnAxis) {
-    if (activeObject == UINT32_MAX)
+bool Gizmo::PickAxis(EditorCamera& camera, const GizmoTarget& target, int mouseX, int mouseY, int& outAxis, float& outTOnAxis) {
+    if (target.activeObject == UINT32_MAX)
         return false;
 
     XMFLOAT3 rayOrigin, rayDir;
     camera.BuildRayFromScreen(float(mouseX), float(mouseY), rayOrigin, rayDir);
 
-    XMFLOAT3 origin = GetOrigin(editMesh, selectedVertex, objectPos, objectRot, objectScale);
+    XMFLOAT3 origin = GetOrigin(target);
     const float axisLen = kAxisLen;
 
     auto testAxis = [&](const XMFLOAT3& axisDir, float& outTRaw, float& outDistSq) {
@@ -162,14 +162,14 @@ bool Gizmo::PickAxis(EditorCamera& camera, EditableMesh* editMesh, uint32_t acti
     return true;
 }
 
-bool Gizmo::ComputeTOnAxis(EditorCamera& camera, EditableMesh* editMesh, uint32_t activeObject, int selectedVertex, const XMFLOAT3& objectPos, const XMFLOAT3& objectRot, const XMFLOAT3& objectScale, int axis, int mouseX, int mouseY, float& outTOnAxis) {
-    if (activeObject == UINT32_MAX)
+bool Gizmo::ComputeTOnAxis(EditorCamera& camera, const GizmoTarget& target, int axis, int mouseX, int mouseY, float& outTOnAxis) {
+    if (target.activeObject == UINT32_MAX)
         return false;
 
     XMFLOAT3 rayOrigin, rayDir;
     camera.BuildRayFromScreen(float(mouseX), float(mouseY), rayOrigin, rayDir);
 
-    XMFLOAT3 origin = GetOrigin(editMesh, selectedVertex, objectPos, objectRot, objectScale);
+    XMFLOAT3 origin = GetOrigin(target);
 
     if (m_dragging && m_activeAxis == axis)
         origin = m_startPos;
@@ -212,8 +212,8 @@ bool Gizmo::ComputeTOnAxis(EditorCamera& camera, EditableMesh* editMesh, uint32_
     return true;
 }
 
-void Gizmo::BuildVertices(Vertex* gizmoVerts, HWND hwnd, EditorCamera& camera, EditableMesh* editMesh, int selectedVertex, const XMFLOAT3& objectPos, const XMFLOAT3& objectRot, const XMFLOAT3& objectScale) {
-    XMFLOAT3 origin = GetOrigin(editMesh, selectedVertex, objectPos, objectRot, objectScale);
+void Gizmo::BuildVertices(Vertex* gizmoVerts, HWND hwnd, EditorCamera& camera, const GizmoTarget& target) {
+    XMFLOAT3 origin = GetOrigin(target);
     const float len = kAxisLen;
 
     XMFLOAT4 hotColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -305,38 +305,39 @@ void Gizmo::BuildVertices(Vertex* gizmoVerts, HWND hwnd, EditorCamera& camera, E
 void Gizmo::Update(Engine* engine, HWND hwnd, EditorCamera& camera, EditableMesh* editMesh, RenderMesh* renderMesh, uint32_t activeObject, int selectedVertex, const XMFLOAT3& objectPos, const XMFLOAT3& objectRot, const XMFLOAT3& objectScale, bool rmbDown, bool rmbPressed, bool lmbDown, bool lmbPressed, bool lmbReleased, int mouseX, int mouseY, XMFLOAT3& inOutObjectPos, bool& outRenderMeshDirty) {
     outRenderMeshDirty = false;
 
-    if (!engine)
-        return;
+    if (!engine) return;
+    if (!editMesh) return;
+    if (!renderMesh) return;
+    if (activeObject == UINT32_MAX) return;
 
-    if (!editMesh)
-        return;
-
-    if (!renderMesh)
-        return;
-
-    if (activeObject == UINT32_MAX)
-        return;
+    GizmoTarget target = {};
+    target.editMesh = editMesh;
+    target.activeObject = activeObject;
+    target.selectedVertex = selectedVertex;
+    target.objectPos = objectPos;
+    target.objectRot = objectRot;
+    target.objectScale = objectScale;
 
     if (!m_dragging && !rmbDown) {
         m_hotAxis = -1;
 
         int axis = -1;
         float axisT = 0.0f;
-        if (PickAxis(camera, editMesh, activeObject, selectedVertex, objectPos, objectRot, objectScale, mouseX, mouseY, axis, axisT))
+        if (PickAxis(camera, target, mouseX, mouseY, axis, axisT))
             m_hotAxis = axis;
     } else {
         m_hotAxis = -1;
     }
 
     Vertex gizmoVerts[kVertexCount] = {};
-    BuildVertices(gizmoVerts, hwnd, camera, editMesh, selectedVertex, objectPos, objectRot, objectScale);
+    BuildVertices(gizmoVerts, hwnd, camera, target);
     engine->UpdateGizmoVertices(gizmoVerts, kVertexCount, hwnd);
 
     if (!rmbDown && lmbPressed && !m_dragging) {
         int axis = -1;
         float axisT0 = 0.0f;
 
-        if (PickAxis(camera, editMesh, activeObject, selectedVertex, objectPos, objectRot, objectScale, mouseX, mouseY, axis, axisT0)) {
+        if (PickAxis(camera, target, mouseX, mouseY, axis, axisT0)) {
             m_activeAxis = axis;
             m_dragging = true;
 
@@ -347,7 +348,7 @@ void Gizmo::Update(Engine* engine, HWND hwnd, EditorCamera& camera, EditableMesh
                 m_startPos = objectPos;
             }
 
-            if (!ComputeTOnAxis(camera, editMesh, activeObject, selectedVertex, objectPos, objectRot, objectScale, m_activeAxis, mouseX, mouseY, m_dragT0))
+            if (!ComputeTOnAxis(camera, target, m_activeAxis, mouseX, mouseY, m_dragT0))
                 m_dragT0 = axisT0;
         }
     }
@@ -355,7 +356,7 @@ void Gizmo::Update(Engine* engine, HWND hwnd, EditorCamera& camera, EditableMesh
     if (m_dragging && lmbDown && m_activeAxis != -1) {
         float axisT = 0.0f;
 
-        if (ComputeTOnAxis(camera, editMesh, activeObject, selectedVertex, objectPos, objectRot, objectScale, m_activeAxis, mouseX, mouseY, axisT)) {
+        if (ComputeTOnAxis(camera, target, m_activeAxis, mouseX, mouseY, axisT)) {
             float deltaT = axisT - m_dragT0;
             XMFLOAT3 axisDir = (m_activeAxis == 0) ? XMFLOAT3(1.0f, 0.0f, 0.0f) : (m_activeAxis == 1) ? XMFLOAT3(0.0f, 1.0f, 0.0f) : XMFLOAT3(0.0f, 0.0f, 1.0f);
 

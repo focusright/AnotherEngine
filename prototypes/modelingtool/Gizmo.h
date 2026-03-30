@@ -14,6 +14,15 @@ enum class GizmoMode {
     Rotate
 };
 
+struct GizmoTarget {
+    EditableMesh* editMesh = nullptr;
+    uint32_t activeObject = UINT32_MAX;
+    int selectedVertex = -1;
+    DirectX::XMFLOAT3 objectPos = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 objectRot = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 objectScale = { 1.0f, 1.0f, 1.0f };
+};
+
 class Gizmo {
 public:
     static const uint32_t kVertexCount = 18;
@@ -29,10 +38,9 @@ public:
     int ActiveAxis() const { return m_activeAxis; }
     int HotAxis() const { return m_hotAxis; }
 
-    //Given the current mouse position, which gizmo axis is the user pointing at?
-    bool PickAxis(EditorCamera& camera, EditableMesh* editMesh, uint32_t activeObject, int selectedVertex, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale, int mouseX, int mouseY, int& outAxis, float& outTOnAxis);
-    bool ComputeTOnAxis(EditorCamera& camera, EditableMesh* editMesh, uint32_t activeObject, int selectedVertex, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale, int axis, int mouseX, int mouseY, float& outTOnAxis);
-    
+    bool PickAxis(EditorCamera& camera, const GizmoTarget& target, int mouseX, int mouseY, int& outAxis, float& outTOnAxis);
+    bool ComputeTOnAxis(EditorCamera& camera, const GizmoTarget& target, int axis, int mouseX, int mouseY, float& outTOnAxis);
+
     void Update(Engine* engine, HWND hwnd, EditorCamera& camera, EditableMesh* editMesh, RenderMesh* renderMesh, uint32_t activeObject, int selectedVertex, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale, bool rmbDown, bool rmbPressed, bool lmbDown, bool lmbPressed, bool lmbReleased, int mouseX, int mouseY, DirectX::XMFLOAT3& inOutObjectPos, bool& outRenderMeshDirty);
 
 private:
@@ -45,6 +53,6 @@ private:
 
     DirectX::XMFLOAT3 LocalVertexToWorld(const DirectX::XMFLOAT3& point, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;
     DirectX::XMFLOAT3 WorldPointToLocal(const DirectX::XMFLOAT3& point, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;
-    DirectX::XMFLOAT3 GetOrigin(EditableMesh* editMesh, int selectedVertex, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;
-    void BuildVertices(Vertex* gizmoVerts, HWND hwnd, EditorCamera& camera, EditableMesh* editMesh, int selectedVertex, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale);
+    DirectX::XMFLOAT3 GetOrigin(const GizmoTarget& target) const;
+    void BuildVertices(Vertex* gizmoVerts, HWND hwnd, EditorCamera& camera, const GizmoTarget& target);
 };

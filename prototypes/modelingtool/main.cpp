@@ -573,7 +573,7 @@ void EndImGuiFrame() {
 
 void DrawSceneWindow() {
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(260, 260), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(260, 300), ImGuiCond_FirstUseEver);
     ImGui::Begin("Scene");
 
     if (ImGui::Button("Add")) {

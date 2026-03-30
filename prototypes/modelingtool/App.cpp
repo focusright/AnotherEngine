@@ -246,13 +246,7 @@ void App::Update(float dt) {
             int axis = -1;
             float t0 = 0.0f;
 
-            GizmoTarget target = {};
-            target.editMesh = m_editMesh;
-            target.activeObject = m_activeObject;
-            target.selectedVertex = m_selectedVertex;
-            target.objectPos = m_objectPos[m_activeObject];
-            target.objectRot = m_objectRot[m_activeObject];
-            target.objectScale = m_objectScale[m_activeObject];
+            GizmoTarget target = BuildGizmoTarget();
 
             overGizmo = m_gizmo.PickAxis(
                 m_camera,
@@ -360,29 +354,8 @@ void App::Update(float dt) {
     }
 
     bool renderMeshDirty = false;
-
-    GizmoUpdateArgs gizmoArgs = {};
-    gizmoArgs.engine = m_engine;
-    gizmoArgs.hwnd = m_hwnd;
-    gizmoArgs.camera = &m_camera;
-    gizmoArgs.editMesh = m_editMesh;
-    gizmoArgs.renderMesh = m_renderMesh;
-    gizmoArgs.target.editMesh = m_editMesh;
-    gizmoArgs.target.activeObject = m_activeObject;
-    gizmoArgs.target.selectedVertex = m_selectedVertex;
-    gizmoArgs.target.objectPos = m_objectPos[m_activeObject];
-    gizmoArgs.target.objectRot = m_objectRot[m_activeObject];
-    gizmoArgs.target.objectScale = m_objectScale[m_activeObject];
-    gizmoArgs.rmbDown = m_input.rmbDown;
-    gizmoArgs.rmbPressed = m_input.rmbPressed;
-    gizmoArgs.lmbDown = m_input.lmbDown;
-    gizmoArgs.lmbPressed = m_input.lmbPressed;
-    gizmoArgs.lmbReleased = m_input.lmbReleased;
-    gizmoArgs.mouseX = m_input.mouseX;
-    gizmoArgs.mouseY = m_input.mouseY;
-    gizmoArgs.objectPos = &m_objectPos[m_activeObject];
-    gizmoArgs.outRenderMeshDirty = &renderMeshDirty;
-
+    
+    GizmoUpdateArgs gizmoArgs = BuildGizmoUpdateArgs(renderMeshDirty);
     m_gizmo.Update(gizmoArgs);
 
     if (renderMeshDirty)
@@ -733,6 +706,44 @@ bool App::WorldToScreen(const DirectX::XMFLOAT3& worldPos, float& outScreenX, fl
     outScreenX = (ndcX * 0.5f + 0.5f) * width;
     outScreenY = (-ndcY * 0.5f + 0.5f) * height;
     return true;
+}
+
+GizmoTarget App::BuildGizmoTarget() const {
+    GizmoTarget target = {};
+    target.editMesh = m_editMesh;
+    target.activeObject = m_activeObject;
+    target.selectedVertex = m_selectedVertex;
+
+    if (m_activeObject < m_objectCount) {
+        target.objectPos = m_objectPos[m_activeObject];
+        target.objectRot = m_objectRot[m_activeObject];
+        target.objectScale = m_objectScale[m_activeObject];
+    }
+
+    return target;
+}
+
+GizmoUpdateArgs App::BuildGizmoUpdateArgs(bool& outRenderMeshDirty) {
+    GizmoUpdateArgs args = {};
+    args.engine = m_engine;
+    args.hwnd = m_hwnd;
+    args.camera = &m_camera;
+    args.editMesh = m_editMesh;
+    args.renderMesh = m_renderMesh;
+    args.target = BuildGizmoTarget();
+    args.rmbDown = m_input.rmbDown;
+    args.rmbPressed = m_input.rmbPressed;
+    args.lmbDown = m_input.lmbDown;
+    args.lmbPressed = m_input.lmbPressed;
+    args.lmbReleased = m_input.lmbReleased;
+    args.mouseX = m_input.mouseX;
+    args.mouseY = m_input.mouseY;
+    args.outRenderMeshDirty = &outRenderMeshDirty;
+
+    if (m_activeObject < m_objectCount)
+        args.objectPos = &m_objectPos[m_activeObject];
+
+    return args;
 }
 
 void App::UpdateViewProj() {

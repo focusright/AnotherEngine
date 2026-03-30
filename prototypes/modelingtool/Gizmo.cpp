@@ -309,7 +309,6 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
 
     if (!args.engine) { return; }
     if (!args.camera) { return; }
-    if (!args.renderMesh) { return; }
     if (!args.objectPos) { return; }
     if (!args.outRenderMeshDirty) { return; }
     if (args.target.activeObject == UINT32_MAX) { return; }

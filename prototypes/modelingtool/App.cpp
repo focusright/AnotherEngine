@@ -728,7 +728,6 @@ GizmoUpdateArgs App::BuildGizmoUpdateArgs(bool& outRenderMeshDirty) {
     args.engine = m_engine;
     args.hwnd = m_hwnd;
     args.camera = &m_camera;
-    args.renderMesh = m_renderMesh;
     args.target = BuildGizmoTarget();
     args.rmbDown = m_input.rmbDown;
     args.rmbPressed = m_input.rmbPressed;

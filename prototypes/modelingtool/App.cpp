@@ -715,9 +715,9 @@ GizmoTarget App::BuildGizmoTarget() const {
     target.selectedVertex = m_selectedVertex;
 
     if (m_activeObject < m_objectCount) {
-        target.objectPos = m_objectPos[m_activeObject];
-        target.objectRot = m_objectRot[m_activeObject];
-        target.objectScale = m_objectScale[m_activeObject];
+        target.objectPos = const_cast<DirectX::XMFLOAT3*>(&m_objectPos[m_activeObject]);
+        target.objectRot = &m_objectRot[m_activeObject];
+        target.objectScale = &m_objectScale[m_activeObject];
     }
 
     return target;
@@ -737,9 +737,6 @@ GizmoUpdateArgs App::BuildGizmoUpdateArgs(bool& outRenderMeshDirty) {
     args.mouseX = m_input.mouseX;
     args.mouseY = m_input.mouseY;
     args.outRenderMeshDirty = &outRenderMeshDirty;
-
-    if (m_activeObject < m_objectCount) { args.objectPos = &m_objectPos[m_activeObject]; }
-
     return args;
 }
 

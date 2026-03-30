@@ -18,9 +18,9 @@ struct GizmoTarget {
     EditableMesh* editMesh = nullptr;
     uint32_t activeObject = UINT32_MAX;
     int selectedVertex = -1;
-    DirectX::XMFLOAT3 objectPos = { 0.0f, 0.0f, 0.0f };
-    DirectX::XMFLOAT3 objectRot = { 0.0f, 0.0f, 0.0f };
-    DirectX::XMFLOAT3 objectScale = { 1.0f, 1.0f, 1.0f };
+    DirectX::XMFLOAT3* objectPos = nullptr;
+    const DirectX::XMFLOAT3* objectRot = nullptr;
+    const DirectX::XMFLOAT3* objectScale = nullptr;
 };
 
 struct GizmoUpdateArgs {
@@ -35,7 +35,6 @@ struct GizmoUpdateArgs {
     bool lmbReleased = false;
     int mouseX = 0;
     int mouseY = 0;
-    DirectX::XMFLOAT3* objectPos = nullptr;
     bool* outRenderMeshDirty = nullptr;
 };
 

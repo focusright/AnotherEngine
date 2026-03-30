@@ -23,6 +23,24 @@ struct GizmoTarget {
     DirectX::XMFLOAT3 objectScale = { 1.0f, 1.0f, 1.0f };
 };
 
+struct GizmoUpdateArgs {
+    Engine* engine = nullptr;
+    HWND hwnd = nullptr;
+    EditorCamera* camera = nullptr;
+    EditableMesh* editMesh = nullptr;
+    RenderMesh* renderMesh = nullptr;
+    GizmoTarget target = {};
+    bool rmbDown = false;
+    bool rmbPressed = false;
+    bool lmbDown = false;
+    bool lmbPressed = false;
+    bool lmbReleased = false;
+    int mouseX = 0;
+    int mouseY = 0;
+    DirectX::XMFLOAT3* objectPos = nullptr;
+    bool* outRenderMeshDirty = nullptr;
+};
+
 class Gizmo {
 public:
     static const uint32_t kVertexCount = 18;
@@ -41,7 +59,7 @@ public:
     bool PickAxis(EditorCamera& camera, const GizmoTarget& target, int mouseX, int mouseY, int& outAxis, float& outTOnAxis);
     bool ComputeTOnAxis(EditorCamera& camera, const GizmoTarget& target, int axis, int mouseX, int mouseY, float& outTOnAxis);
 
-    void Update(Engine* engine, HWND hwnd, EditorCamera& camera, EditableMesh* editMesh, RenderMesh* renderMesh, uint32_t activeObject, int selectedVertex, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale, bool rmbDown, bool rmbPressed, bool lmbDown, bool lmbPressed, bool lmbReleased, int mouseX, int mouseY, DirectX::XMFLOAT3& inOutObjectPos, bool& outRenderMeshDirty);
+    void Update(const GizmoUpdateArgs& args);
 
 private:
     GizmoMode m_mode = GizmoMode::Translate;

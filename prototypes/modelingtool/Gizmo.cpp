@@ -302,42 +302,46 @@ void Gizmo::BuildVertices(Vertex* gizmoVerts, HWND hwnd, EditorCamera& camera, c
     addAxisQuad(12, XMFLOAT3(0.0f, 0.0f, 1.0f), colorZ);
 }
 
-void Gizmo::Update(Engine* engine, HWND hwnd, EditorCamera& camera, EditableMesh* editMesh, RenderMesh* renderMesh, uint32_t activeObject, int selectedVertex, const XMFLOAT3& objectPos, const XMFLOAT3& objectRot, const XMFLOAT3& objectScale, bool rmbDown, bool rmbPressed, bool lmbDown, bool lmbPressed, bool lmbReleased, int mouseX, int mouseY, XMFLOAT3& inOutObjectPos, bool& outRenderMeshDirty) {
-    outRenderMeshDirty = false;
+void Gizmo::Update(const GizmoUpdateArgs& args) {
+    if (args.outRenderMeshDirty)
+        *args.outRenderMeshDirty = false;
 
-    if (!engine) return;
-    if (!editMesh) return;
-    if (!renderMesh) return;
-    if (activeObject == UINT32_MAX) return;
+    if (!args.engine) return;
+    if (!args.camera) return;
+    if (!args.editMesh) return;
+    if (!args.renderMesh) return;
+    if (!args.objectPos) return;
+    if (!args.outRenderMeshDirty) return;
+    if (args.target.activeObject == UINT32_MAX) return;
 
-    GizmoTarget target = {};
-    target.editMesh = editMesh;
-    target.activeObject = activeObject;
-    target.selectedVertex = selectedVertex;
-    target.objectPos = objectPos;
-    target.objectRot = objectRot;
-    target.objectScale = objectScale;
+    EditorCamera& camera = *args.camera;
+    EditableMesh* editMesh = args.editMesh;
+    const GizmoTarget& target = args.target;
+    const DirectX::XMFLOAT3& objectPos = target.objectPos;
+    const DirectX::XMFLOAT3& objectRot = target.objectRot;
+    const DirectX::XMFLOAT3& objectScale = target.objectScale;
+    int selectedVertex = target.selectedVertex;
 
-    if (!m_dragging && !rmbDown) {
+    if (!m_dragging && !args.rmbDown) {
         m_hotAxis = -1;
 
         int axis = -1;
         float axisT = 0.0f;
-        if (PickAxis(camera, target, mouseX, mouseY, axis, axisT))
+        if (PickAxis(camera, target, args.mouseX, args.mouseY, axis, axisT))
             m_hotAxis = axis;
     } else {
         m_hotAxis = -1;
     }
 
     Vertex gizmoVerts[kVertexCount] = {};
-    BuildVertices(gizmoVerts, hwnd, camera, target);
-    engine->UpdateGizmoVertices(gizmoVerts, kVertexCount, hwnd);
+    BuildVertices(gizmoVerts, args.hwnd, camera, target);
+    args.engine->UpdateGizmoVertices(gizmoVerts, kVertexCount, args.hwnd);
 
-    if (!rmbDown && lmbPressed && !m_dragging) {
+    if (!args.rmbDown && args.lmbPressed && !m_dragging) {
         int axis = -1;
         float axisT0 = 0.0f;
 
-        if (PickAxis(camera, target, mouseX, mouseY, axis, axisT0)) {
+        if (PickAxis(camera, target, args.mouseX, args.mouseY, axis, axisT0)) {
             m_activeAxis = axis;
             m_dragging = true;
 
@@ -348,15 +352,15 @@ void Gizmo::Update(Engine* engine, HWND hwnd, EditorCamera& camera, EditableMesh
                 m_startPos = objectPos;
             }
 
-            if (!ComputeTOnAxis(camera, target, m_activeAxis, mouseX, mouseY, m_dragT0))
+            if (!ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, m_dragT0))
                 m_dragT0 = axisT0;
         }
     }
 
-    if (m_dragging && lmbDown && m_activeAxis != -1) {
+    if (m_dragging && args.lmbDown && m_activeAxis != -1) {
         float axisT = 0.0f;
 
-        if (ComputeTOnAxis(camera, target, m_activeAxis, mouseX, mouseY, axisT)) {
+        if (ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, axisT)) {
             float deltaT = axisT - m_dragT0;
             XMFLOAT3 axisDir = (m_activeAxis == 0) ? XMFLOAT3(1.0f, 0.0f, 0.0f) : (m_activeAxis == 1) ? XMFLOAT3(0.0f, 1.0f, 0.0f) : XMFLOAT3(0.0f, 0.0f, 1.0f);
 
@@ -369,19 +373,19 @@ void Gizmo::Update(Engine* engine, HWND hwnd, EditorCamera& camera, EditableMesh
             if (selectedVertex != -1) {
                 XMFLOAT3 localPos = WorldPointToLocal(newPos, objectPos, objectRot, objectScale);
                 editMesh->SetVertex((VertexID)selectedVertex, localPos);
-                outRenderMeshDirty = true;
+                *args.outRenderMeshDirty = true;
             } else {
-                inOutObjectPos = newPos;
+                *args.objectPos = newPos;
             }
         }
     }
 
-    if (m_dragging && lmbReleased) {
+    if (m_dragging && args.lmbReleased) {
         m_dragging = false;
         m_activeAxis = -1;
     }
 
-    if (m_dragging && rmbPressed) {
+    if (m_dragging && args.rmbPressed) {
         m_dragging = false;
         m_activeAxis = -1;
     }

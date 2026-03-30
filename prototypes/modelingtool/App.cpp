@@ -361,27 +361,29 @@ void App::Update(float dt) {
 
     bool renderMeshDirty = false;
 
-    m_gizmo.Update(
-        m_engine,
-        m_hwnd,
-        m_camera,
-        m_editMesh,
-        m_renderMesh,
-        m_activeObject,
-        m_selectedVertex,
-        m_objectPos[m_activeObject],
-        m_objectRot[m_activeObject],
-        m_objectScale[m_activeObject],
-        m_input.rmbDown,
-        m_input.rmbPressed,
-        m_input.lmbDown,
-        m_input.lmbPressed,
-        m_input.lmbReleased,
-        m_input.mouseX,
-        m_input.mouseY,
-        m_objectPos[m_activeObject],
-        renderMeshDirty
-    );
+    GizmoUpdateArgs gizmoArgs = {};
+    gizmoArgs.engine = m_engine;
+    gizmoArgs.hwnd = m_hwnd;
+    gizmoArgs.camera = &m_camera;
+    gizmoArgs.editMesh = m_editMesh;
+    gizmoArgs.renderMesh = m_renderMesh;
+    gizmoArgs.target.editMesh = m_editMesh;
+    gizmoArgs.target.activeObject = m_activeObject;
+    gizmoArgs.target.selectedVertex = m_selectedVertex;
+    gizmoArgs.target.objectPos = m_objectPos[m_activeObject];
+    gizmoArgs.target.objectRot = m_objectRot[m_activeObject];
+    gizmoArgs.target.objectScale = m_objectScale[m_activeObject];
+    gizmoArgs.rmbDown = m_input.rmbDown;
+    gizmoArgs.rmbPressed = m_input.rmbPressed;
+    gizmoArgs.lmbDown = m_input.lmbDown;
+    gizmoArgs.lmbPressed = m_input.lmbPressed;
+    gizmoArgs.lmbReleased = m_input.lmbReleased;
+    gizmoArgs.mouseX = m_input.mouseX;
+    gizmoArgs.mouseY = m_input.mouseY;
+    gizmoArgs.objectPos = &m_objectPos[m_activeObject];
+    gizmoArgs.outRenderMeshDirty = &renderMeshDirty;
+
+    m_gizmo.Update(gizmoArgs);
 
     if (renderMeshDirty)
         m_renderMesh->dirty = true;

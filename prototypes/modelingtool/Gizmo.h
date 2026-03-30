@@ -14,13 +14,17 @@ enum class GizmoMode {
     Rotate
 };
 
+struct GizmoTransformRef {
+    DirectX::XMFLOAT3* pos = nullptr;
+    const DirectX::XMFLOAT3* rot = nullptr;
+    const DirectX::XMFLOAT3* scale = nullptr;
+};
+
 struct GizmoTarget {
     EditableMesh* editMesh = nullptr;
     uint32_t activeObject = UINT32_MAX;
     int selectedVertex = -1;
-    DirectX::XMFLOAT3* objectPos = nullptr;
-    const DirectX::XMFLOAT3* objectRot = nullptr;
-    const DirectX::XMFLOAT3* objectScale = nullptr;
+    GizmoTransformRef transform = {};
 };
 
 struct GizmoUpdateArgs {

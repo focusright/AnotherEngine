@@ -67,10 +67,10 @@ XMFLOAT3 Gizmo::WorldPointToLocal(const XMFLOAT3& point, const XMFLOAT3& objectP
 XMFLOAT3 Gizmo::GetOrigin(const GizmoTarget& target) const {
     if (target.selectedVertex != -1) {
         XMFLOAT3 localPos = target.editMesh->GetVertex((VertexID)target.selectedVertex);
-        return LocalVertexToWorld(localPos, *target.objectPos, *target.objectRot, *target.objectScale);
+        return LocalVertexToWorld(localPos, *target.transform.pos, *target.transform.rot, *target.transform.scale);
     }
 
-    return *target.objectPos;
+    return *target.transform.pos;
 }
 
 bool Gizmo::PickAxis(EditorCamera& camera, const GizmoTarget& target, int mouseX, int mouseY, int& outAxis, float& outTOnAxis) {
@@ -310,16 +310,16 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
         !args.outRenderMeshDirty ||
         args.target.activeObject == UINT32_MAX ||
         !args.target.editMesh ||
-        !args.target.objectPos ||
-        !args.target.objectRot ||
-        !args.target.objectScale) { return; }
+        !args.target.transform.pos ||
+        !args.target.transform.rot ||
+        !args.target.transform.scale) { return; }
 
     EditorCamera& camera = *args.camera;
     EditableMesh* editMesh = args.target.editMesh;
     const GizmoTarget& target = args.target;
-    DirectX::XMFLOAT3& objectPos = *target.objectPos;
-    const DirectX::XMFLOAT3& objectRot = *target.objectRot;
-    const DirectX::XMFLOAT3& objectScale = *target.objectScale;
+    DirectX::XMFLOAT3& objectPos = *target.transform.pos;
+    const DirectX::XMFLOAT3& objectRot = *target.transform.rot;
+    const DirectX::XMFLOAT3& objectScale = *target.transform.scale;
     int selectedVertex = target.selectedVertex;
 
     if (!m_dragging && !args.rmbDown) {

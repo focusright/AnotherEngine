@@ -715,9 +715,9 @@ GizmoTarget App::BuildGizmoTarget() const {
     target.selectedVertex = m_selectedVertex;
 
     if (m_activeObject < m_objectCount) {
-        target.objectPos = const_cast<DirectX::XMFLOAT3*>(&m_objectPos[m_activeObject]);
-        target.objectRot = &m_objectRot[m_activeObject];
-        target.objectScale = &m_objectScale[m_activeObject];
+        target.transform.pos = const_cast<DirectX::XMFLOAT3*>(&m_objectPos[m_activeObject]);
+        target.transform.rot = &m_objectRot[m_activeObject];
+        target.transform.scale = &m_objectScale[m_activeObject];
     }
 
     return target;

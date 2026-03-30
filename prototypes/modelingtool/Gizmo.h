@@ -27,7 +27,6 @@ struct GizmoUpdateArgs {
     Engine* engine = nullptr;
     HWND hwnd = nullptr;
     EditorCamera* camera = nullptr;
-    EditableMesh* editMesh = nullptr;
     RenderMesh* renderMesh = nullptr;
     GizmoTarget target = {};
     bool rmbDown = false;

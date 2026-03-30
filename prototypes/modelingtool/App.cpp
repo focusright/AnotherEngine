@@ -728,7 +728,6 @@ GizmoUpdateArgs App::BuildGizmoUpdateArgs(bool& outRenderMeshDirty) {
     args.engine = m_engine;
     args.hwnd = m_hwnd;
     args.camera = &m_camera;
-    args.editMesh = m_editMesh;
     args.renderMesh = m_renderMesh;
     args.target = BuildGizmoTarget();
     args.rmbDown = m_input.rmbDown;
@@ -740,8 +739,7 @@ GizmoUpdateArgs App::BuildGizmoUpdateArgs(bool& outRenderMeshDirty) {
     args.mouseY = m_input.mouseY;
     args.outRenderMeshDirty = &outRenderMeshDirty;
 
-    if (m_activeObject < m_objectCount)
-        args.objectPos = &m_objectPos[m_activeObject];
+    if (m_activeObject < m_objectCount) { args.objectPos = &m_objectPos[m_activeObject]; }
 
     return args;
 }

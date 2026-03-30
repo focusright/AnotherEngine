@@ -303,19 +303,20 @@ void Gizmo::BuildVertices(Vertex* gizmoVerts, HWND hwnd, EditorCamera& camera, c
 }
 
 void Gizmo::Update(const GizmoUpdateArgs& args) {
-    if (args.outRenderMeshDirty)
+    if (args.outRenderMeshDirty) {
         *args.outRenderMeshDirty = false;
+    }
 
-    if (!args.engine) return;
-    if (!args.camera) return;
-    if (!args.editMesh) return;
-    if (!args.renderMesh) return;
-    if (!args.objectPos) return;
-    if (!args.outRenderMeshDirty) return;
-    if (args.target.activeObject == UINT32_MAX) return;
+    if (!args.engine) { return; }
+    if (!args.camera) { return; }
+    if (!args.renderMesh) { return; }
+    if (!args.objectPos) { return; }
+    if (!args.outRenderMeshDirty) { return; }
+    if (args.target.activeObject == UINT32_MAX) { return; }
+    if (!args.target.editMesh) { return; }
 
     EditorCamera& camera = *args.camera;
-    EditableMesh* editMesh = args.editMesh;
+    EditableMesh* editMesh = args.target.editMesh;
     const GizmoTarget& target = args.target;
     const DirectX::XMFLOAT3& objectPos = target.objectPos;
     const DirectX::XMFLOAT3& objectRot = target.objectRot;
@@ -327,8 +328,7 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
 
         int axis = -1;
         float axisT = 0.0f;
-        if (PickAxis(camera, target, args.mouseX, args.mouseY, axis, axisT))
-            m_hotAxis = axis;
+        if (PickAxis(camera, target, args.mouseX, args.mouseY, axis, axisT)) { m_hotAxis = axis; }
     } else {
         m_hotAxis = -1;
     }
@@ -352,8 +352,7 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
                 m_startPos = objectPos;
             }
 
-            if (!ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, m_dragT0))
-                m_dragT0 = axisT0;
+            if (!ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, m_dragT0)) { m_dragT0 = axisT0; }
         }
     }
 

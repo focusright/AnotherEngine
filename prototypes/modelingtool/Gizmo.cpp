@@ -15,6 +15,8 @@ void Gizmo::Reset() {
     m_dragT0 = 0.0f;
     m_startPos = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_startScale = XMFLOAT3(1.0f, 1.0f, 1.0f);
+    m_startRot = XMFLOAT3(0.0f, 0.0f, 0.0f);
+    m_rotateVec0 = XMFLOAT3(0.0f, 0.0f, 0.0f);
 }
 
 void Gizmo::SetMode(GizmoMode mode) {
@@ -72,6 +74,54 @@ XMFLOAT3 Gizmo::GetOrigin(const GizmoTarget& target) const {
     }
 
     return *target.transform.pos;
+}
+
+bool Gizmo::ComputeRotateVectorOnPlane(EditorCamera& camera, const GizmoTarget& target, int axis, int mouseX, int mouseY, XMFLOAT3& outVec) const {
+    if (target.activeObject == UINT32_MAX) { return false; }
+
+    XMFLOAT3 rayOrigin;
+    XMFLOAT3 rayDir;
+    camera.BuildRayFromScreen(float(mouseX), float(mouseY), rayOrigin, rayDir);
+
+    XMFLOAT3 origin = GetOrigin(target);
+    XMFLOAT3 axisDir = (axis == 0) ? XMFLOAT3(1.0f, 0.0f, 0.0f) : (axis == 1) ? XMFLOAT3(0.0f, 1.0f, 0.0f) : XMFLOAT3(0.0f, 0.0f, 1.0f);
+
+    XMVECTOR rayOriginVec = XMLoadFloat3(&rayOrigin);
+    XMVECTOR rayDirVec = XMVector3Normalize(XMLoadFloat3(&rayDir));
+    XMVECTOR originVec = XMLoadFloat3(&origin);
+    XMVECTOR axisDirVec = XMVector3Normalize(XMLoadFloat3(&axisDir));
+
+    float denom = XMVectorGetX(XMVector3Dot(rayDirVec, axisDirVec));
+    if (fabsf(denom) < 1e-6f) { return false; }
+
+    float rayT = XMVectorGetX(XMVector3Dot(XMVectorSubtract(originVec, rayOriginVec), axisDirVec)) / denom;
+    if (rayT < 0.0f) { rayT = 0.0f; }
+
+    XMVECTOR hit = XMVectorAdd(rayOriginVec, XMVectorScale(rayDirVec, rayT));
+    XMVECTOR fromOrigin = XMVectorSubtract(hit, originVec);
+    XMVECTOR planar = XMVectorSubtract(fromOrigin, XMVectorScale(axisDirVec, XMVectorGetX(XMVector3Dot(fromOrigin, axisDirVec))));
+
+    float planarLenSq = XMVectorGetX(XMVector3Dot(planar, planar));
+    if (planarLenSq < 1e-8f) { return false; }
+
+    planar = XMVector3Normalize(planar);
+    XMStoreFloat3(&outVec, planar);
+    return true;
+}
+
+float Gizmo::SignedAngleAroundAxis(const XMFLOAT3& from, const XMFLOAT3& to, const XMFLOAT3& axisDir) const {
+    XMVECTOR fromVec = XMVector3Normalize(XMLoadFloat3(&from));
+    XMVECTOR toVec = XMVector3Normalize(XMLoadFloat3(&to));
+    XMVECTOR axisVec = XMVector3Normalize(XMLoadFloat3(&axisDir));
+
+    float cosAngle = XMVectorGetX(XMVector3Dot(fromVec, toVec));
+    if (cosAngle < -1.0f) { cosAngle = -1.0f; }
+    if (cosAngle > 1.0f) { cosAngle = 1.0f; }
+
+    XMVECTOR crossVec = XMVector3Cross(fromVec, toVec);
+    float sinAngle = XMVectorGetX(XMVector3Dot(crossVec, axisVec));
+
+    return std::atan2(sinAngle, cosAngle);
 }
 
 bool Gizmo::PickAxis(EditorCamera& camera, const GizmoTarget& target, int mouseX, int mouseY, int& outAxis, float& outTOnAxis) {
@@ -322,7 +372,7 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
     if (m_mode != GizmoMode::Translate) { target.selectedVertex = -1; }
 
     DirectX::XMFLOAT3& objectPos = *target.transform.pos;
-    const DirectX::XMFLOAT3& objectRot = *target.transform.rot;
+    DirectX::XMFLOAT3& objectRot = *target.transform.rot;
     DirectX::XMFLOAT3& objectScale = *target.transform.scale;
     int selectedVertex = target.selectedVertex;
 
@@ -355,8 +405,16 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
             }
 
             m_startScale = objectScale;
+            m_startRot = objectRot;
 
-            if (!ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, m_dragT0)) { m_dragT0 = axisT0; }
+            if (m_mode == GizmoMode::Rotate) {
+                if (!ComputeRotateVectorOnPlane(camera, target, m_activeAxis, args.mouseX, args.mouseY, m_rotateVec0)) {
+                    m_dragging = false;
+                    m_activeAxis = -1;
+                }
+            } else {
+                if (!ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, m_dragT0)) { m_dragT0 = axisT0; }
+            }
         }
     }
 
@@ -366,36 +424,57 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
         if (m_dragging && args.lmbDown && m_activeAxis != -1) {
             float axisT = 0.0f;
 
-            if (ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, axisT)) {
-                float deltaT = axisT - m_dragT0;
+            if (m_dragging && args.lmbDown && m_activeAxis != -1) {
                 XMFLOAT3 axisDir = (m_activeAxis == 0) ? XMFLOAT3(1.0f, 0.0f, 0.0f) : (m_activeAxis == 1) ? XMFLOAT3(0.0f, 1.0f, 0.0f) : XMFLOAT3(0.0f, 0.0f, 1.0f);
 
-                if (m_mode == GizmoMode::Translate) {
-                    XMFLOAT3 newPos(
-                        m_startPos.x + axisDir.x * deltaT,
-                        m_startPos.y + axisDir.y * deltaT,
-                        m_startPos.z + axisDir.z * deltaT
-                    );
+                if (m_mode == GizmoMode::Rotate) {
+                    XMFLOAT3 rotateVec;
+                    if (ComputeRotateVectorOnPlane(camera, target, m_activeAxis, args.mouseX, args.mouseY, rotateVec)) {
+                        float deltaAngle = SignedAngleAroundAxis(m_rotateVec0, rotateVec, axisDir);
+                        objectRot = m_startRot;
 
-                    if (selectedVertex != -1) {
-                        XMFLOAT3 localPos = WorldPointToLocal(newPos, objectPos, objectRot, objectScale);
-                        editMesh->SetVertex((VertexID)selectedVertex, localPos);
-                        *args.outRenderMeshDirty = true;
-                    } else {
-                        objectPos = newPos;
+                        if (m_activeAxis == 0) {
+                            objectRot.x += deltaAngle;
+                        } else if (m_activeAxis == 1) {
+                            objectRot.y += deltaAngle;
+                        } else if (m_activeAxis == 2) {
+                            objectRot.z += deltaAngle;
+                        }
                     }
-                } else if (m_mode == GizmoMode::Scale) {
-                    const float minScale = 0.05f;
+                } else {
+                    float axisT = 0.0f;
 
-                    if (m_activeAxis == 0) {
-                        objectScale.x = m_startScale.x + deltaT;
-                        if (objectScale.x < minScale) { objectScale.x = minScale; }
-                    } else if (m_activeAxis == 1) {
-                        objectScale.y = m_startScale.y + deltaT;
-                        if (objectScale.y < minScale) { objectScale.y = minScale; }
-                    } else if (m_activeAxis == 2) {
-                        objectScale.z = m_startScale.z + deltaT;
-                        if (objectScale.z < minScale) { objectScale.z = minScale; }
+                    if (ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, axisT)) {
+                        float deltaT = axisT - m_dragT0;
+
+                        if (m_mode == GizmoMode::Translate) {
+                            XMFLOAT3 newPos(
+                                m_startPos.x + axisDir.x * deltaT,
+                                m_startPos.y + axisDir.y * deltaT,
+                                m_startPos.z + axisDir.z * deltaT
+                            );
+
+                            if (selectedVertex != -1) {
+                                XMFLOAT3 localPos = WorldPointToLocal(newPos, objectPos, objectRot, objectScale);
+                                editMesh->SetVertex((VertexID)selectedVertex, localPos);
+                                *args.outRenderMeshDirty = true;
+                            } else {
+                                objectPos = newPos;
+                            }
+                        } else if (m_mode == GizmoMode::Scale) {
+                            const float minScale = 0.05f;
+
+                            if (m_activeAxis == 0) {
+                                objectScale.x = m_startScale.x + deltaT;
+                                if (objectScale.x < minScale) { objectScale.x = minScale; }
+                            } else if (m_activeAxis == 1) {
+                                objectScale.y = m_startScale.y + deltaT;
+                                if (objectScale.y < minScale) { objectScale.y = minScale; }
+                            } else if (m_activeAxis == 2) {
+                                objectScale.z = m_startScale.z + deltaT;
+                                if (objectScale.z < minScale) { objectScale.z = minScale; }
+                            }
+                        }
                     }
                 }
             }

@@ -16,7 +16,7 @@ enum class GizmoMode {
 
 struct GizmoTransformRef {
     DirectX::XMFLOAT3* pos = nullptr;
-    const DirectX::XMFLOAT3* rot = nullptr;
+    DirectX::XMFLOAT3* rot = nullptr;
     DirectX::XMFLOAT3* scale = nullptr;
 };
 
@@ -70,9 +70,13 @@ private:
     float m_dragT0 = 0.0f;
     DirectX::XMFLOAT3 m_startPos = { 0, 0, 0 };
     DirectX::XMFLOAT3 m_startScale = { 1, 1, 1 };
+    DirectX::XMFLOAT3 m_startRot = { 0, 0, 0 };
+    DirectX::XMFLOAT3 m_rotateVec0 = { 0, 0, 0 };
 
     DirectX::XMFLOAT3 LocalVertexToWorld(const DirectX::XMFLOAT3& point, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;
     DirectX::XMFLOAT3 WorldPointToLocal(const DirectX::XMFLOAT3& point, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;
     DirectX::XMFLOAT3 GetOrigin(const GizmoTarget& target) const;
+    bool ComputeRotateVectorOnPlane(EditorCamera& camera, const GizmoTarget& target, int axis, int mouseX, int mouseY, DirectX::XMFLOAT3& outVec) const;
+    float SignedAngleAroundAxis(const DirectX::XMFLOAT3& from, const DirectX::XMFLOAT3& to, const DirectX::XMFLOAT3& axisDir) const;
     void BuildVertices(Vertex* gizmoVerts, HWND hwnd, EditorCamera& camera, const GizmoTarget& target);
 };

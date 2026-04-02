@@ -17,7 +17,7 @@ enum class GizmoMode {
 struct GizmoTransformRef {
     DirectX::XMFLOAT3* pos = nullptr;
     const DirectX::XMFLOAT3* rot = nullptr;
-    const DirectX::XMFLOAT3* scale = nullptr;
+    DirectX::XMFLOAT3* scale = nullptr;
 };
 
 struct GizmoTarget {
@@ -69,6 +69,7 @@ private:
     bool m_dragging = false;
     float m_dragT0 = 0.0f;
     DirectX::XMFLOAT3 m_startPos = { 0, 0, 0 };
+    DirectX::XMFLOAT3 m_startScale = { 1, 1, 1 };
 
     DirectX::XMFLOAT3 LocalVertexToWorld(const DirectX::XMFLOAT3& point, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;
     DirectX::XMFLOAT3 WorldPointToLocal(const DirectX::XMFLOAT3& point, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;

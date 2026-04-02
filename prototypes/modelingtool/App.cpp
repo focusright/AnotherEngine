@@ -708,14 +708,14 @@ bool App::WorldToScreen(const DirectX::XMFLOAT3& worldPos, float& outScreenX, fl
     return true;
 }
 
-GizmoTarget App::BuildGizmoTarget() const {
+GizmoTarget App::BuildGizmoTarget() {
     GizmoTarget target = {};
     target.editMesh = m_editMesh;
     target.activeObject = m_activeObject;
     target.selectedVertex = m_selectedVertex;
 
     if (m_activeObject < m_objectCount) {
-        target.transform.pos = const_cast<DirectX::XMFLOAT3*>(&m_objectPos[m_activeObject]);
+        target.transform.pos = &m_objectPos[m_activeObject];
         target.transform.rot = &m_objectRot[m_activeObject];
         target.transform.scale = &m_objectScale[m_activeObject];
     }

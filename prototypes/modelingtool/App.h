@@ -112,7 +112,7 @@ private:
     DirectX::XMFLOAT3 LocalVertexToWorld(const DirectX::XMFLOAT3& p) const;
     DirectX::XMFLOAT3 WorldPointToLocal(const DirectX::XMFLOAT3& p) const;
     bool WorldToScreen(const DirectX::XMFLOAT3& worldPos, float& outScreenX, float& outScreenY) const;
-    GizmoTarget BuildGizmoTarget() const;
+    GizmoTarget BuildGizmoTarget();
     GizmoUpdateArgs BuildGizmoUpdateArgs(bool& outRenderMeshDirty);
     void UpdateViewProj();
     void FocusCamera();

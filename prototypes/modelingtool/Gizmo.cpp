@@ -14,6 +14,7 @@ void Gizmo::Reset() {
     m_dragging = false;
     m_dragT0 = 0.0f;
     m_startPos = XMFLOAT3(0.0f, 0.0f, 0.0f);
+    m_startScale = XMFLOAT3(1.0f, 1.0f, 1.0f);
 }
 
 void Gizmo::SetMode(GizmoMode mode) {
@@ -316,10 +317,13 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
 
     EditorCamera& camera = *args.camera;
     EditableMesh* editMesh = args.target.editMesh;
-    const GizmoTarget& target = args.target;
+
+    GizmoTarget target = args.target;
+    if (m_mode != GizmoMode::Translate) { target.selectedVertex = -1; }
+
     DirectX::XMFLOAT3& objectPos = *target.transform.pos;
     const DirectX::XMFLOAT3& objectRot = *target.transform.rot;
-    const DirectX::XMFLOAT3& objectScale = *target.transform.scale;
+    DirectX::XMFLOAT3& objectScale = *target.transform.scale;
     int selectedVertex = target.selectedVertex;
 
     if (!m_dragging && !args.rmbDown) {
@@ -350,6 +354,8 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
                 m_startPos = objectPos;
             }
 
+            m_startScale = objectScale;
+
             if (!ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, m_dragT0)) { m_dragT0 = axisT0; }
         }
     }
@@ -357,22 +363,41 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
     if (m_dragging && args.lmbDown && m_activeAxis != -1) {
         float axisT = 0.0f;
 
-        if (ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, axisT)) {
-            float deltaT = axisT - m_dragT0;
-            XMFLOAT3 axisDir = (m_activeAxis == 0) ? XMFLOAT3(1.0f, 0.0f, 0.0f) : (m_activeAxis == 1) ? XMFLOAT3(0.0f, 1.0f, 0.0f) : XMFLOAT3(0.0f, 0.0f, 1.0f);
+        if (m_dragging && args.lmbDown && m_activeAxis != -1) {
+            float axisT = 0.0f;
 
-            XMFLOAT3 newPos(
-                m_startPos.x + axisDir.x * deltaT,
-                m_startPos.y + axisDir.y * deltaT,
-                m_startPos.z + axisDir.z * deltaT
-            );
+            if (ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, axisT)) {
+                float deltaT = axisT - m_dragT0;
+                XMFLOAT3 axisDir = (m_activeAxis == 0) ? XMFLOAT3(1.0f, 0.0f, 0.0f) : (m_activeAxis == 1) ? XMFLOAT3(0.0f, 1.0f, 0.0f) : XMFLOAT3(0.0f, 0.0f, 1.0f);
 
-            if (selectedVertex != -1) {
-                XMFLOAT3 localPos = WorldPointToLocal(newPos, objectPos, objectRot, objectScale);
-                editMesh->SetVertex((VertexID)selectedVertex, localPos);
-                *args.outRenderMeshDirty = true;
-            } else {
-                objectPos = newPos;
+                if (m_mode == GizmoMode::Translate) {
+                    XMFLOAT3 newPos(
+                        m_startPos.x + axisDir.x * deltaT,
+                        m_startPos.y + axisDir.y * deltaT,
+                        m_startPos.z + axisDir.z * deltaT
+                    );
+
+                    if (selectedVertex != -1) {
+                        XMFLOAT3 localPos = WorldPointToLocal(newPos, objectPos, objectRot, objectScale);
+                        editMesh->SetVertex((VertexID)selectedVertex, localPos);
+                        *args.outRenderMeshDirty = true;
+                    } else {
+                        objectPos = newPos;
+                    }
+                } else if (m_mode == GizmoMode::Scale) {
+                    const float minScale = 0.05f;
+
+                    if (m_activeAxis == 0) {
+                        objectScale.x = m_startScale.x + deltaT;
+                        if (objectScale.x < minScale) { objectScale.x = minScale; }
+                    } else if (m_activeAxis == 1) {
+                        objectScale.y = m_startScale.y + deltaT;
+                        if (objectScale.y < minScale) { objectScale.y = minScale; }
+                    } else if (m_activeAxis == 2) {
+                        objectScale.z = m_startScale.z + deltaT;
+                        if (objectScale.z < minScale) { objectScale.z = minScale; }
+                    }
+                }
             }
         }
     }

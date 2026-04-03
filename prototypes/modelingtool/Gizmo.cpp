@@ -1,7 +1,5 @@
 #include "Gizmo.h"
-
 #include <cmath>
-
 #include "EditableMesh.h"
 #include "EditorCamera.h"
 #include "RenderMesh.h"
@@ -157,7 +155,6 @@ bool Gizmo::PickAxis(EditorCamera& camera, const GizmoTarget& target, int mouseX
         XMVECTOR axisDirVec = XMVector3Normalize(XMLoadFloat3(&axisDir));
 
         XMVECTOR segStart = originVec;
-        XMVECTOR segEnd = XMVectorAdd(originVec, XMVectorScale(axisDirVec, axisLen));
 
         XMVECTOR w0 = XMVectorSubtract(rayOriginVec, segStart);
         float a = XMVectorGetX(XMVector3Dot(rayDirVec, rayDirVec));
@@ -439,7 +436,6 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
     }
 
     if (m_dragging && args.lmbDown && m_activeAxis != -1) {
-        float axisT = 0.0f;
         XMFLOAT3 axisDir = (m_activeAxis == 0) ? XMFLOAT3(1.0f, 0.0f, 0.0f) : (m_activeAxis == 1) ? XMFLOAT3(0.0f, 1.0f, 0.0f) : XMFLOAT3(0.0f, 0.0f, 1.0f);
 
         if (m_mode == GizmoMode::Rotate) {

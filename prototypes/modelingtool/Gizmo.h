@@ -5,7 +5,6 @@
 #include "Engine.h"
 
 struct EditableMesh;
-struct RenderMesh;
 class EditorCamera;
 
 enum class GizmoMode {
@@ -70,7 +69,7 @@ private:
     float m_dragT0 = 0.0f;
     DirectX::XMFLOAT3 m_startPos = { 0, 0, 0 };
     DirectX::XMFLOAT3 m_startScale = { 1, 1, 1 };
-    DirectX::XMFLOAT3 m_startRot = { 0, 0, 0 }; //The object’s Euler rotation
+    DirectX::XMFLOAT3 m_startRot = { 0, 0, 0 }; //The object's Euler rotation
     int m_dragStartMouseX = 0;
     int m_dragStartMouseY = 0;
     DirectX::XMFLOAT2 m_rotateAxisScreenDir = { 1.0f, 0.0f };

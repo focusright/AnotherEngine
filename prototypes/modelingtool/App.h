@@ -81,7 +81,6 @@ private:
 
     bool m_isDragging = false; //dragging a gizmo
     int m_selectedVertex = -1;
-    POINT m_lastMousePos = { 0, 0 };
     HWND m_hwnd = nullptr;
 
     bool m_colorsInit = false;

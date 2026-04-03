@@ -172,8 +172,8 @@ XMFLOAT3 EditorCamera::Up() const {
 }
 
 void EditorCamera::BuildRayFromScreen(float screenX, float screenY, XMFLOAT3& outOrigin, XMFLOAT3& outDir) const {
-    float x = (2.0f * screenX / m_viewW) - 1.0f;
-    float y = 1.0f - (2.0f * screenY / m_viewH);
+    float x = (2.0f * screenX / m_viewW) - 1.0f; //left edge x = -1, right edge x = +1
+    float y = 1.0f - (2.0f * screenY / m_viewH); //top edge y = +1, bottom edge y = -1
 
     XMMATRIX invVP = XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_viewProj));
 

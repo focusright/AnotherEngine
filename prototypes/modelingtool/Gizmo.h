@@ -64,14 +64,14 @@ public:
 
 private:
     GizmoMode m_mode = GizmoMode::Translate;
-    int m_activeAxis = -1;
+    int m_activeAxis = -1; //0 = X, 1 = Y, 2 = Z, -1 = none
     int m_hotAxis = -1;
     bool m_dragging = false;
     float m_dragT0 = 0.0f;
     DirectX::XMFLOAT3 m_startPos = { 0, 0, 0 };
     DirectX::XMFLOAT3 m_startScale = { 1, 1, 1 };
-    DirectX::XMFLOAT3 m_startRot = { 0, 0, 0 };
-    DirectX::XMFLOAT3 m_rotateVec0 = { 0, 0, 0 };
+    DirectX::XMFLOAT3 m_startRot = { 0, 0, 0 };   //The object’s Euler rotation at the instant the drag started
+    DirectX::XMFLOAT3 m_rotateVec0 = { 0, 0, 0 }; //The starting reference direction used for rotation angle measurement
 
     DirectX::XMFLOAT3 LocalVertexToWorld(const DirectX::XMFLOAT3& point, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;
     DirectX::XMFLOAT3 WorldPointToLocal(const DirectX::XMFLOAT3& point, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;

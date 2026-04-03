@@ -63,6 +63,7 @@ public:
     void Update(const GizmoUpdateArgs& args);
 
 private:
+private:
     GizmoMode m_mode = GizmoMode::Translate;
     int m_activeAxis = -1; //0 = X, 1 = Y, 2 = Z, -1 = none
     int m_hotAxis = -1;
@@ -70,13 +71,11 @@ private:
     float m_dragT0 = 0.0f;
     DirectX::XMFLOAT3 m_startPos = { 0, 0, 0 };
     DirectX::XMFLOAT3 m_startScale = { 1, 1, 1 };
-    DirectX::XMFLOAT3 m_startRot = { 0, 0, 0 };   //The object’s Euler rotation at the instant the drag started
-    DirectX::XMFLOAT3 m_rotateVec0 = { 0, 0, 0 }; //The starting reference direction used for rotation angle measurement
+    DirectX::XMFLOAT3 m_startRot = { 0, 0, 0 }; //The object’s Euler rotation
+    int m_dragStartMouseX = 0;
 
     DirectX::XMFLOAT3 LocalVertexToWorld(const DirectX::XMFLOAT3& point, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;
     DirectX::XMFLOAT3 WorldPointToLocal(const DirectX::XMFLOAT3& point, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;
     DirectX::XMFLOAT3 GetOrigin(const GizmoTarget& target) const;
-    bool ComputeRotateVectorOnPlane(EditorCamera& camera, const GizmoTarget& target, int axis, int mouseX, int mouseY, DirectX::XMFLOAT3& outVec) const;
-    float SignedAngleAroundAxis(const DirectX::XMFLOAT3& from, const DirectX::XMFLOAT3& to, const DirectX::XMFLOAT3& axisDir) const;
     void BuildVertices(Vertex* gizmoVerts, HWND hwnd, EditorCamera& camera, const GizmoTarget& target);
 };

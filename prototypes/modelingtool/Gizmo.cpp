@@ -16,7 +16,7 @@ void Gizmo::Reset() {
     m_startPos = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_startScale = XMFLOAT3(1.0f, 1.0f, 1.0f);
     m_startRot = XMFLOAT3(0.0f, 0.0f, 0.0f);
-    m_rotateVec0 = XMFLOAT3(0.0f, 0.0f, 0.0f);
+    m_dragStartMouseX = 0;
 }
 
 void Gizmo::SetMode(GizmoMode mode) {
@@ -74,54 +74,6 @@ XMFLOAT3 Gizmo::GetOrigin(const GizmoTarget& target) const {
     }
 
     return *target.transform.pos;
-}
-
-bool Gizmo::ComputeRotateVectorOnPlane(EditorCamera& camera, const GizmoTarget& target, int axis, int mouseX, int mouseY, XMFLOAT3& outVec) const {
-    if (target.activeObject == UINT32_MAX) { return false; }
-
-    XMFLOAT3 rayOrigin;
-    XMFLOAT3 rayDir;
-    camera.BuildRayFromScreen(float(mouseX), float(mouseY), rayOrigin, rayDir);
-
-    XMFLOAT3 origin = GetOrigin(target);
-    XMFLOAT3 axisDir = (axis == 0) ? XMFLOAT3(1.0f, 0.0f, 0.0f) : (axis == 1) ? XMFLOAT3(0.0f, 1.0f, 0.0f) : XMFLOAT3(0.0f, 0.0f, 1.0f);
-
-    XMVECTOR rayOriginVec = XMLoadFloat3(&rayOrigin);
-    XMVECTOR rayDirVec = XMVector3Normalize(XMLoadFloat3(&rayDir));
-    XMVECTOR originVec = XMLoadFloat3(&origin);
-    XMVECTOR axisDirVec = XMVector3Normalize(XMLoadFloat3(&axisDir));
-
-    float denom = XMVectorGetX(XMVector3Dot(rayDirVec, axisDirVec));
-    if (fabsf(denom) < 1e-6f) { return false; }
-
-    float rayT = XMVectorGetX(XMVector3Dot(XMVectorSubtract(originVec, rayOriginVec), axisDirVec)) / denom;
-    if (rayT < 0.0f) { rayT = 0.0f; }
-
-    XMVECTOR hit = XMVectorAdd(rayOriginVec, XMVectorScale(rayDirVec, rayT));
-    XMVECTOR fromOrigin = XMVectorSubtract(hit, originVec);
-    XMVECTOR planar = XMVectorSubtract(fromOrigin, XMVectorScale(axisDirVec, XMVectorGetX(XMVector3Dot(fromOrigin, axisDirVec))));
-
-    float planarLenSq = XMVectorGetX(XMVector3Dot(planar, planar));
-    if (planarLenSq < 1e-8f) { return false; }
-
-    planar = XMVector3Normalize(planar);
-    XMStoreFloat3(&outVec, planar);
-    return true;
-}
-
-float Gizmo::SignedAngleAroundAxis(const XMFLOAT3& from, const XMFLOAT3& to, const XMFLOAT3& axisDir) const {
-    XMVECTOR fromVec = XMVector3Normalize(XMLoadFloat3(&from));
-    XMVECTOR toVec = XMVector3Normalize(XMLoadFloat3(&to));
-    XMVECTOR axisVec = XMVector3Normalize(XMLoadFloat3(&axisDir));
-
-    float cosAngle = XMVectorGetX(XMVector3Dot(fromVec, toVec));
-    if (cosAngle < -1.0f) { cosAngle = -1.0f; }
-    if (cosAngle > 1.0f) { cosAngle = 1.0f; }
-
-    XMVECTOR crossVec = XMVector3Cross(fromVec, toVec);
-    float sinAngle = XMVectorGetX(XMVector3Dot(crossVec, axisVec));
-
-    return std::atan2(sinAngle, cosAngle);
 }
 
 bool Gizmo::PickAxis(EditorCamera& camera, const GizmoTarget& target, int mouseX, int mouseY, int& outAxis, float& outTOnAxis) {
@@ -409,10 +361,7 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
             m_startRot = objectRot;
 
             if (m_mode == GizmoMode::Rotate) {
-                if (!ComputeRotateVectorOnPlane(camera, target, m_activeAxis, args.mouseX, args.mouseY, m_rotateVec0)) {
-                    m_dragging = false;
-                    m_activeAxis = -1;
-                }
+                m_dragStartMouseX = args.mouseX;
             } else {
                 if (!ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, m_dragT0)) { m_dragT0 = axisT0; }
             }
@@ -424,18 +373,17 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
         XMFLOAT3 axisDir = (m_activeAxis == 0) ? XMFLOAT3(1.0f, 0.0f, 0.0f) : (m_activeAxis == 1) ? XMFLOAT3(0.0f, 1.0f, 0.0f) : XMFLOAT3(0.0f, 0.0f, 1.0f);
 
         if (m_mode == GizmoMode::Rotate) {
-            XMFLOAT3 rotateVec;
-            if (ComputeRotateVectorOnPlane(camera, target, m_activeAxis, args.mouseX, args.mouseY, rotateVec)) {
-                float deltaAngle = SignedAngleAroundAxis(m_rotateVec0, rotateVec, axisDir);
-                objectRot = m_startRot;
+            const float rotateSpeed = 0.01f;
+            float deltaAngle = float(args.mouseX - m_dragStartMouseX) * rotateSpeed;
 
-                if (m_activeAxis == 0) {
-                    objectRot.x += deltaAngle;
-                } else if (m_activeAxis == 1) {
-                    objectRot.y += deltaAngle;
-                } else if (m_activeAxis == 2) {
-                    objectRot.z += deltaAngle;
-                }
+            objectRot = m_startRot;
+
+            if (m_activeAxis == 0) {
+                objectRot.x += deltaAngle;
+            } else if (m_activeAxis == 1) {
+                objectRot.y += deltaAngle;
+            } else if (m_activeAxis == 2) {
+                objectRot.z += deltaAngle;
             }
         } else {
             float axisT = 0.0f;

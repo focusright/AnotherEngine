@@ -1,99 +1,117 @@
-# AGENTS.md — AnotherEngine Operational Contract
+# AGENTS.md — Modeling Tool Subtree Rules
 
-This file defines how AI agents (Codex) must operate inside this repository.
+This file overrides or tightens root AGENTS.md rules for everything inside `prototypes/modelingtool/`.
 
-## 1. Mission
-
-AnotherEngine is a solo-built engine and game project inspired by:
-- Another World
-- Fade to Black
-- Silent Hill 2
-- The Last of Us
-- Alone in the Dark (1992 character models)
-- 4D Sports Boxing (character + ring only)
-
-The goal is to build everything from scratch in code (Eric Chahi model).
-
-The current focus is the Modeling Tool prototype.
+This subtree is the active development surface.
 
 ---
 
-## 2. Non-Negotiable Rules
+## 1. Scope of Work
 
-### No Hallucinated Code
-- NEVER invent APIs, classes, methods, or structure.
-- Only use symbols that exist in the repository.
-- If unsure, search the codebase first.
+Only modify files inside:
 
-### Small Surgical Changes Only
-- No large refactors.
-- No architecture rewrites.
-- Every change must be incremental and minimal.
+`prototypes/modelingtool/`
 
-### Always Provide:
-- Exact file names modified.
-- Clear explanation of what changed and why.
-- No "zip only" responses.
-- No massive rewrites.
+Do not:
+- modify root-level architecture unless explicitly requested
+- introduce new modules outside this subtree unless explicitly requested
+- perform wide refactors when a small local change is enough
 
-### Code Style
-- Function parameter lists must remain on a single line.
-- Match existing formatting and patterns.
-- Do not introduce new architectural layers unless explicitly requested.
+All changes must be local and surgical by default.
 
 ---
 
-## 3. Current Development Phase
+## 2. Current Baseline
 
-Version: v0.0.2
+Baseline is the currently compiling Visual Studio solution:
 
-Locked Scope:
-- Scene Save/Load (.aem format)
-- Minimal Dear ImGui integration
-- Mouse-driven world-space translate gizmo (X/Y/Z axis only)
+`modelingtool.sln`
 
-Immediate Priority:
-Fix behavioral bugs in the translate gizmo before adding any new features.
+Files known to exist include:
+- `main.cpp`
+- `App.*`
+- `Engine.*`
+- `EditableMesh.*`
+- `RenderMesh.*`
+- `EditorCamera.*`
+- `GraphicsDevice.*`
+- `Gizmo.*`
+- `EditorCommands.h`
+- `EditorContext.h`
 
-DO NOT add new features until gizmo behavior is stable.
-
----
-
-## 4. Rendering Constraints (Aesthetic Spine)
-
-The engine must preserve the following aesthetic:
-
-- No textures
-- No normal maps
-- No specular highlights
-- Large flat-shaded color regions
-- Minimal diffuse (single directional)
-- Strong ambient dominance
-- Visible polygon facets
-- Lighting subordinate to authored color
-- 24 FPS target (cinematic feel)
+Do not assume additional systems exist unless they are present in the repo.
 
 ---
 
-## 5. Engine Constraints
+## 3. D3D12 Layer Discipline
 
-- D3D12-first architecture
-- WebGPU seam later
-- Instant play (zero-loading start)
-- Background streaming allowed with placeholder visuals
-- Editor and runtime separated
-- Single executable editor
-- VR support must remain architecturally possible later
+Whenever modifying rendering code, explicitly identify which D3D12 mental layer is being touched:
+
+1. Resources / Memory
+2. Commands / Synchronization
+3. Fixed Function Pipeline
+4. Programmable / Shader
+
+Do not mix concerns without justification.
 
 ---
 
-## 6. Modeling Tool Direction
+## 4. Current Tool State
 
-Modeling tool must:
-- Produce instantiable assets
-- Support primitive-first workflow
-- Maintain Unreal-style instancing workflow
-- Use tetrahedron as first primitive
+`v0.0.2` is complete in this subtree.
 
-Current work target:
-Fix translate gizmo bugs.
+Implemented features include:
+- primitive scene with tetra objects
+- object selection
+- vertex selection
+- world-space translate / scale / rotate gizmo
+- scene save/load (`.aem`)
+- minimal Dear ImGui scene window
+- editor command spine
+- focus camera
+
+Important note:
+- the current rotate behavior uses the existing axis gizmo
+- a separate new rotation gizmo is not required for v0.0.2
+
+---
+
+## 5. Code Change Policy
+
+All modifications must:
+- be incremental
+- compile immediately
+- avoid wide rewrites
+- avoid renaming large structures unless requested
+- avoid formatting churn
+
+When presenting changes:
+- specify file name
+- show exact changed block
+- explain why the change is needed
+- identify affected D3D12 layer when relevant
+
+Never present only a zip.
+
+---
+
+## 6. Current Gizmo Constraints
+
+- gizmo is world-space only
+- X/Y/Z axis only
+- translate, scale, and simplified rotate are present
+- no local-space gizmo yet
+- no multi-select
+
+Do not expand scope unless explicitly asked.
+
+---
+
+## 7. Next Planned Step
+
+After v0.0.2, the next planned milestone is **v0.0.2.1**, the structure migration pass.
+
+Priority in that pass:
+- move the modeling tool toward the actual engine folder structure
+- lay structural foundation for the real engine repo shape
+- avoid unnecessary feature expansion during migration

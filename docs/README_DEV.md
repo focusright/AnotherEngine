@@ -1,39 +1,63 @@
-# Development Setup — AnotherEngine Modeling Tool
+# README_DEV.md
 
-## Environment
-
-- Windows 10/11
-- Visual Studio 2022
-- Desktop development with C++
-- Windows 10/11 SDK
-- x64 build
-
-## Opening the Project
+## Build
 
 Open:
 
-prototypes/modelingtool/modelingtool.sln
+`prototypes/modelingtool/modelingtool.sln`
 
 Select:
-- Configuration: Debug
-- Platform: x64
+- Configuration: `Debug`
+- Platform: `x64`
 
-Build → Run (F5)
+Build and run with `F5`.
 
----
+## Current Version
 
-## Controls (Current)
+`v0.0.2`
 
-- RMB + WASD → Fly camera
-- Mouse → Select
-- Gizmo drag → Translate along axis
-- Ctrl+S → Save scene (.aem)
-- Ctrl+O → Load scene (.aem)
+Status: complete.
 
----
+The current prototype includes:
+- scene save/load via `.aem`
+- minimal Dear ImGui integration
+- command-driven editor actions
+- focus camera
+- world-space gizmo with translate / scale / rotate
+
+## Controls
+
+### Camera
+- `RMB + Mouse` → fly look
+- `RMB + WASD` → fly move
+- `MMB + Mouse` → orbit around persistent view pivot
+- `Shift + MMB + Mouse` → pan
+- Mouse wheel → dolly
+- `F` → focus active object
+
+### Scene / Editor
+- `LMB` → gizmo interaction / selection
+- `Ctrl+S` → save scene (`scene.aem`)
+- `Ctrl+O` → load scene (`scene.aem`)
+- `N` → add object
+- `Ctrl+D` → duplicate active object
+- `Delete` → delete active object
+
+## ImGui Scene Window
+
+The `Scene` window currently provides:
+- `Add`, `Duplicate`, `Delete`
+- `Save`, `Load`
+- object list selection
+- last command display
+- gizmo mode buttons: `Translate`, `Scale`, `Rotate`
+- direct editing for `Position`, `Rotation`, and `Scale`
 
 ## Project Structure
 
+Primary active subtree:
+
+```text
 prototypes/modelingtool/
     main.cpp
     App.*
@@ -42,14 +66,7 @@ prototypes/modelingtool/
     RenderMesh.*
     EditorCamera.*
     GraphicsDevice.*
-
-Scene files use .aem custom text format.
-
----
-
-## Current Version
-
-v0.0.2
-
-Primary task:
-Fix translate gizmo behavior bugs.
+    Gizmo.*
+    EditorCommands.h
+    EditorContext.h
+    third_party/imgui/

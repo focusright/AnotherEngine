@@ -296,29 +296,6 @@ void App::Update(float dt) {
         }
     }
 
-#if 0
-    // Old direct vertex drag on Z=0 plane.
-    // Keep disabled. Vertex movement should go through the gizmo now.
-    if (m_input.lmbReleased) {
-        m_isDragging = false;
-        m_selectedVertex = -1;
-
-        for (int i = 0; i < 3; ++i) { m_renderMesh->drawVertices[i].color = m_baseColors[i]; }
-        m_renderMesh->dirty = true;
-    }
-
-    if (m_input.lmbDown && m_isDragging && m_selectedVertex != -1) {
-        float worldX = 0.0f, worldY = 0.0f;
-        if (ScreenToWorldOnZPlane(m_input.mouseX, m_input.mouseY, worldX, worldY)) {
-            DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)m_selectedVertex);
-            p.x = worldX;
-            p.y = worldY;
-            m_editMesh->SetVertex((VertexID)m_selectedVertex, p);
-            m_renderMesh->dirty = true;
-        }
-    }
-#endif
-
     UpdateViewProj();
 
     // Debug: visualize orbit pivot as a tiny cyan tetra at m_viewPivot.

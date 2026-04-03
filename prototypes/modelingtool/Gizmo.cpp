@@ -213,6 +213,7 @@ bool Gizmo::PickAxis(EditorCamera& camera, const GizmoTarget& target, int mouseX
     return true;
 }
 
+//Take the mouse cursor, cast it into 3D, intersect it with a plane that contains the gizmo axis, then measure how far along the axis that hit point lies.
 bool Gizmo::ComputeTOnAxis(EditorCamera& camera, const GizmoTarget& target, int axis, int mouseX, int mouseY, float& outTOnAxis) {
     if (target.activeObject == UINT32_MAX)
         return false;
@@ -222,20 +223,20 @@ bool Gizmo::ComputeTOnAxis(EditorCamera& camera, const GizmoTarget& target, int 
 
     XMFLOAT3 origin = GetOrigin(target);
 
-    if (m_dragging && m_activeAxis == axis)
+    if (m_dragging && m_activeAxis == axis) //make sure the gizmo origin doesn't move while dragging
         origin = m_startPos;
 
     XMFLOAT3 axisDir = (axis == 0) ? XMFLOAT3(1.0f, 0.0f, 0.0f) : (axis == 1) ? XMFLOAT3(0.0f, 1.0f, 0.0f) : XMFLOAT3(0.0f, 0.0f, 1.0f);
 
-    XMVECTOR rayOriginVec = XMLoadFloat3(&rayOrigin);
-    XMVECTOR rayDirVec = XMVector3Normalize(XMLoadFloat3(&rayDir));
-    XMVECTOR originVec = XMLoadFloat3(&origin);
-    XMVECTOR axisDirVec = XMVector3Normalize(XMLoadFloat3(&axisDir));
+    XMVECTOR rayOriginVec = XMLoadFloat3(&rayOrigin);                 //Imagine dragging along X:                                                                   
+    XMVECTOR rayDirVec = XMVector3Normalize(XMLoadFloat3(&rayDir));   //draw the X axis through the object                                                            
+    XMVECTOR originVec = XMLoadFloat3(&origin);                       //build a sheet of paper containing that X axis                                                  
+    XMVECTOR axisDirVec = XMVector3Normalize(XMLoadFloat3(&axisDir)); //rotate that sheet so it faces the camera nicely                                                   
+                                                                      //shoot the mouse ray into the sheet                                                               
+    XMFLOAT3 camForward = camera.Forward();                           //wherever it lands, drop that point onto the X axis                                                 
+    XMVECTOR viewDir = XMVector3Normalize(XMLoadFloat3(&camForward)); //the signed distance along X is t
 
-    XMFLOAT3 camForward = camera.Forward();
-    XMVECTOR viewDir = XMVector3Normalize(XMLoadFloat3(&camForward));
-
-    XMVECTOR planeNormal = XMVector3Cross(axisDirVec, XMVector3Cross(viewDir, axisDirVec));
+    XMVECTOR planeNormal = XMVector3Cross(axisDirVec, XMVector3Cross(viewDir, axisDirVec)); //creates the normal of a plane that contains axisDir & faces the camera
     float normalLenSq = XMVectorGetX(XMVector3Dot(planeNormal, planeNormal));
 
     if (normalLenSq < 1e-8f) {
@@ -253,7 +254,7 @@ bool Gizmo::ComputeTOnAxis(EditorCamera& camera, const GizmoTarget& target, int 
         return false;
 
     float rayT = XMVectorGetX(XMVector3Dot(XMVectorSubtract(originVec, rayOriginVec), planeNormal)) / denom;
-    if (rayT < 0.0f)
+    if (rayT < 0.0f) //solving for t: dot((rayOrigin + t * rayDir) - origin, planeNormal) = 0
         rayT = 0.0f;
 
     XMVECTOR hitPoint = XMVectorAdd(rayOriginVec, XMVectorScale(rayDirVec, rayT));

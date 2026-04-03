@@ -63,7 +63,6 @@ public:
     void Update(const GizmoUpdateArgs& args);
 
 private:
-private:
     GizmoMode m_mode = GizmoMode::Translate;
     int m_activeAxis = -1; //0 = X, 1 = Y, 2 = Z, -1 = none
     int m_hotAxis = -1;
@@ -73,9 +72,12 @@ private:
     DirectX::XMFLOAT3 m_startScale = { 1, 1, 1 };
     DirectX::XMFLOAT3 m_startRot = { 0, 0, 0 }; //The object’s Euler rotation
     int m_dragStartMouseX = 0;
+    int m_dragStartMouseY = 0;
+    DirectX::XMFLOAT2 m_rotateAxisScreenDir = { 1.0f, 0.0f };
 
     DirectX::XMFLOAT3 LocalVertexToWorld(const DirectX::XMFLOAT3& point, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;
     DirectX::XMFLOAT3 WorldPointToLocal(const DirectX::XMFLOAT3& point, const DirectX::XMFLOAT3& objectPos, const DirectX::XMFLOAT3& objectRot, const DirectX::XMFLOAT3& objectScale) const;
     DirectX::XMFLOAT3 GetOrigin(const GizmoTarget& target) const;
+    bool ComputeAxisScreenDirection(HWND hwnd, EditorCamera& camera, const GizmoTarget& target, int axis, DirectX::XMFLOAT2& outDir) const;
     void BuildVertices(Vertex* gizmoVerts, HWND hwnd, EditorCamera& camera, const GizmoTarget& target);
 };

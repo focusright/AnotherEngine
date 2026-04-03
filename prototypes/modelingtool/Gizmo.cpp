@@ -17,6 +17,8 @@ void Gizmo::Reset() {
     m_startScale = XMFLOAT3(1.0f, 1.0f, 1.0f);
     m_startRot = XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_dragStartMouseX = 0;
+    m_dragStartMouseY = 0;
+    m_rotateAxisScreenDir = XMFLOAT2(1.0f, 0.0f);
 }
 
 void Gizmo::SetMode(GizmoMode mode) {
@@ -74,6 +76,68 @@ XMFLOAT3 Gizmo::GetOrigin(const GizmoTarget& target) const {
     }
 
     return *target.transform.pos;
+}
+
+bool Gizmo::ComputeAxisScreenDirection(HWND hwnd, EditorCamera& camera, const GizmoTarget& target, int axis, XMFLOAT2& outDir) const {
+    if (target.activeObject == UINT32_MAX)
+        return false;
+
+    RECT rc;
+    GetClientRect(hwnd, &rc);
+
+    float width = float(rc.right - rc.left);
+    float height = float(rc.bottom - rc.top);
+
+    if (width <= 0.0f || height <= 0.0f)
+        return false;
+
+    XMFLOAT3 origin = GetOrigin(target);
+    XMFLOAT3 axisDir = (axis == 0) ? XMFLOAT3(1.0f, 0.0f, 0.0f) : (axis == 1) ? XMFLOAT3(0.0f, 1.0f, 0.0f) : XMFLOAT3(0.0f, 0.0f, 1.0f);
+
+    XMFLOAT3 end(
+        origin.x + axisDir.x * kAxisLen,
+        origin.y + axisDir.y * kAxisLen,
+        origin.z + axisDir.z * kAxisLen
+    );
+
+    XMMATRIX viewProj = XMLoadFloat4x4(&camera.ViewProj());
+
+    auto worldToScreen = [&](const XMFLOAT3& point, float& outX, float& outY) {
+        XMVECTOR p = XMVectorSet(point.x, point.y, point.z, 1.0f);
+        XMVECTOR clip = XMVector4Transform(p, viewProj);
+
+        float w = XMVectorGetW(clip);
+        if (fabsf(w) < 1e-6f)
+            return false;
+        if (w <= 0.0f)
+            return false;
+
+        float ndcX = XMVectorGetX(clip) / w;
+        float ndcY = XMVectorGetY(clip) / w;
+
+        outX = (ndcX * 0.5f + 0.5f) * width;
+        outY = (-ndcY * 0.5f + 0.5f) * height;
+        return true;
+        };
+
+    float x0 = 0.0f, y0 = 0.0f;
+    float x1 = 0.0f, y1 = 0.0f;
+
+    if (!worldToScreen(origin, x0, y0))
+        return false;
+    if (!worldToScreen(end, x1, y1))
+        return false;
+
+    float dx = x1 - x0;
+    float dy = y1 - y0;
+    float len = std::sqrt(dx * dx + dy * dy);
+
+    if (len < 1e-4f)
+        return false;
+
+    outDir.x = dx / len;
+    outDir.y = dy / len;
+    return true;
 }
 
 bool Gizmo::PickAxis(EditorCamera& camera, const GizmoTarget& target, int mouseX, int mouseY, int& outAxis, float& outTOnAxis) {
@@ -362,6 +426,12 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
 
             if (m_mode == GizmoMode::Rotate) {
                 m_dragStartMouseX = args.mouseX;
+                m_dragStartMouseY = args.mouseY;
+
+                if (!ComputeAxisScreenDirection(args.hwnd, camera, target, m_activeAxis, m_rotateAxisScreenDir)) {
+                    m_dragging = false;
+                    m_activeAxis = -1;
+                }
             } else {
                 if (!ComputeTOnAxis(camera, target, m_activeAxis, args.mouseX, args.mouseY, m_dragT0)) { m_dragT0 = axisT0; }
             }
@@ -374,7 +444,10 @@ void Gizmo::Update(const GizmoUpdateArgs& args) {
 
         if (m_mode == GizmoMode::Rotate) {
             const float rotateSpeed = 0.01f;
-            float deltaAngle = float(args.mouseX - m_dragStartMouseX) * rotateSpeed;
+            float mouseDx = float(args.mouseX - m_dragStartMouseX);
+            float mouseDy = float(args.mouseY - m_dragStartMouseY);
+            float dragAlongAxis = mouseDx * m_rotateAxisScreenDir.x + mouseDy * m_rotateAxisScreenDir.y;
+            float deltaAngle = dragAlongAxis * rotateSpeed;
 
             objectRot = m_startRot;
 

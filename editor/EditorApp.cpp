@@ -439,14 +439,17 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
                 }
 
                 if (!wasDown && wParam == 'S' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
+                    EnsureDefaultSceneDirectoryExists();
+                    std::wstring scenePath = GetDefaultScenePath();
                     EditorCommand command = {EditorCommandType::SaveScene};
-                    command.path = kDefaultScenePath;
+                    command.path = scenePath.c_str();
                     ExecuteCommand(command);
                 }
 
                 if (!wasDown && wParam == 'O' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
+                    std::wstring scenePath = GetDefaultScenePath();
                     EditorCommand command = {EditorCommandType::LoadScene};
-                    command.path = kDefaultScenePath;
+                    command.path = scenePath.c_str();
                     ExecuteCommand(command);
                 }
 

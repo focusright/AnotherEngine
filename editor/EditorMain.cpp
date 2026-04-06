@@ -593,17 +593,18 @@ void DrawSceneWindow() {
         g_app.ExecuteCommand(command);
     }
 
-    const wchar_t* scenePath = kDefaultScenePath;
+    std::wstring scenePath = GetDefaultScenePath();
 
     if (ImGui::Button("Save")) {
+        EnsureDefaultSceneDirectoryExists();
         EditorCommand command = {EditorCommandType::SaveScene};
-        command.path = scenePath;
+        command.path = scenePath.c_str();
         g_app.ExecuteCommand(command);
     }
     ImGui::SameLine();
     if (ImGui::Button("Load")) {
         EditorCommand command = {EditorCommandType::LoadScene};
-        command.path = scenePath;
+        command.path = scenePath.c_str();
         g_app.ExecuteCommand(command);
     }
 

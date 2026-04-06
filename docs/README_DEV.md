@@ -4,16 +4,16 @@
 v0.0.2.1 - AE structure migration pass
 
 ## Purpose of This Pass
-This pass migrates the former modeling tool prototype into the real Another Engine folder structure without changing editor/runtime behavior.
+This pass moves the former modeling tool prototype into the real Another Engine folder structure without changing editor/runtime behavior.
 
 The goal is to stop the project structure from hardening around `prototypes/modelingtool/` and prepare for later runtime spine work.
 
 ## Current Working Baseline
 The project currently compiles and runs.
 
-Behavior is intended to remain the same as the end of v0.0.2, while the source layout, build-file location, and project identity are being cleaned up.
+Behavior is intended to remain the same as the end of v0.0.2, while the source layout, build-file location, asset path handling, and project identity have been cleaned up.
 
-## Current Source Layout
+## Current Repo Layout
 
 ```text
 editor/
@@ -24,6 +24,7 @@ editor/
   EditorCommands.h
   EditorContext.h
   EditorMain.cpp
+  EditorPaths.h
   Gizmo.h
   Gizmo.cpp
   modes/

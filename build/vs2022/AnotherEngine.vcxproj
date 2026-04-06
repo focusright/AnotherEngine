@@ -85,6 +85,11 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(OutDir)assets" mkdir "$(OutDir)assets"
+    if not exist "$(OutDir)assets\scenes" mkdir "$(OutDir)assets\scenes"
+    copy /Y "$(ProjectDir)..\..\assets\scenes\scene.aem" "$(OutDir)assets\scenes\scene.aem"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\editor\Gizmo.cpp" />

@@ -1,14 +1,13 @@
-
-## `docs/PROJECT_STATE.md`
-
-```md
 # AEDD PROJECT STATE
 
 ## Current Version
 v0.0.2.1 - AE structure migration pass
 
+## Status
+Complete, pending final verification against the latest baseline.
+
 ## Current Focus
-Finish and lock the structural migration from prototype layout to real engine/editor/build/content layout without changing runtime behavior.
+Lock the structural migration from prototype layout to real engine/editor/build/content layout without changing runtime behavior.
 
 ## Completed Before v0.0.2.1
 - v0.0.2 completed
@@ -33,6 +32,7 @@ Finish and lock the structural migration from prototype layout to real engine/ed
 - `third_party/` - shared third-party dependencies
 - `build/vs2022/` - Visual Studio solution/project files
 - `assets/scenes/` - current scene/content files
+- `docs/` - current developer/project documentation
 
 ## Rules For This Pass
 - structure changes only
@@ -41,7 +41,7 @@ Finish and lock the structural migration from prototype layout to real engine/ed
 - do not begin runtime spine work yet
 - do not begin v0.0.3 topology refactor work yet
 
-## v0.0.2.1 Completion State
+## v0.0.2.1 Completion Criteria
 This pass is considered complete when all of the following are true:
 
 - code no longer lives under `prototypes/modelingtool/`
@@ -53,8 +53,8 @@ This pass is considered complete when all of the following are true:
 - default scene path usage is centralized rather than duplicated across files
 - docs match the real repo layout and current build/runtime behavior
 
-## Current Outcome
-At the intended end state of v0.0.2.1:
+## v0.0.2.1 Outcome
+At the end of v0.0.2.1:
 
 - source lives in `editor/`, `engine/`, and `third_party/`
 - build files live in `build/vs2022/`
@@ -63,5 +63,5 @@ At the intended end state of v0.0.2.1:
 - Visual Studio debug runs and built binaries follow the same scene-file rule
 - the repo no longer presents itself as a prototype-first project
 
-## Next Planned Step After This Pass
+## Next Planned Step
 v0.0.2.2 - runtime spine bootstrap

@@ -36,6 +36,7 @@ Do not blur these phases together.
 - `third_party/` contains vendored dependencies.
 - `build/vs2022/` contains Visual Studio build metadata.
 - `assets/` contains content files used by the executable.
+- `docs/` contains developer-facing project documentation.
 
 ## Build and Runtime Path Rule
 Do not rely on the process working directory for runtime asset paths.
@@ -46,3 +47,54 @@ For the current baseline, the default scene should resolve to:
 
 ```text
 <exe folder>/assets/scenes/scene.aem
+```
+
+When adding new default asset paths, follow the same rule.
+
+## Documentation Rule
+Whenever files are moved, renamed, or rehomed, update docs that mention paths.
+
+At minimum, check:
+- `docs/README_DEV.md`
+- `docs/PROJECT_STATE.md`
+- `docs/AGENTS.md`
+
+Do not leave documentation referencing obsolete locations after a migration pass.
+
+## Behavior-Safe Refactoring Rule
+During structure passes:
+- allow compile fixes
+- allow build metadata fixes
+- allow asset path fixes
+- avoid behavior changes beyond what is necessary to preserve the existing baseline
+
+## Windows-Only Rule
+This engine is Windows-only.
+
+Do not introduce cross-platform abstractions unless explicitly requested for a later reason. Toolchain separation such as `build/vs2022/` exists to separate source from Visual Studio metadata, not to imply multi-platform support.
+
+## Asset Handling Rule
+Content files do not belong under `prototypes/`.
+
+When deciding where files belong:
+- code goes under `editor/`, `engine/`, or `third_party/`
+- build metadata goes under `build/`
+- content goes under `assets/`
+- documentation goes under `docs/`
+
+## Assistant Conduct Rule
+When helping with code changes:
+- provide exact manual edits
+- align with the current repo baseline
+- preserve existing comments where reasonable
+- keep code style consistent with the current project
+- avoid zip-only answers
+- explain changes clearly enough that the user can apply them manually
+
+## Completion Rule For Migration Passes
+A structure migration pass is not complete until:
+- file locations match their intended ownership
+- build files live in a real build folder
+- asset paths are stable
+- Visual Studio project metadata matches the real tree
+- docs match reality

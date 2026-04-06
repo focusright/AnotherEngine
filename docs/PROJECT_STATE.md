@@ -4,7 +4,7 @@
 v0.0.2.1 - AE structure migration pass
 
 ## Status
-Complete, pending final verification against the latest baseline.
+Complete.
 
 ## Current Focus
 Lock the structural migration from prototype layout to real engine/editor/build/content layout without changing runtime behavior.

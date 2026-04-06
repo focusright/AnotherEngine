@@ -171,7 +171,7 @@ void InitializeWindow(HINSTANCE hInstance) {
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
-    wc.lpszClassName = L"ModelingTool";
+    wc.lpszClassName = L"AnotherEngine";
     RegisterClassEx(&wc);
 
     RECT windowRect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
@@ -186,8 +186,8 @@ void InitializeWindow(HINSTANCE hInstance) {
     int y = (screenHeight - windowHeight) / 2;
 
     g_hwnd = CreateWindow(
-        L"ModelingTool",
-        L"Modeling Tool",
+        L"AnotherEngine",
+        L"Another Engine",
         WS_OVERLAPPEDWINDOW,
         x, y, // Centered position
         windowWidth,
@@ -592,7 +592,7 @@ void DrawSceneWindow() {
         g_app.ExecuteCommand(command);
     }
 
-    const wchar_t* scenePath = L"scene.aem";
+    const wchar_t* scenePath = L"../../assets/scenes/scene.aem";
 
     if (ImGui::Button("Save")) {
         EditorCommand command = {EditorCommandType::SaveScene};

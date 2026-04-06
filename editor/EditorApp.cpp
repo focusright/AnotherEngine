@@ -439,13 +439,13 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
                 if (!wasDown && wParam == 'S' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
                     EditorCommand command = {EditorCommandType::SaveScene};
-                    command.path = L"scene.aem";
+                    command.path = L"../../assets/scenes/scene.aem";
                     ExecuteCommand(command);
                 }
 
                 if (!wasDown && wParam == 'O' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
                     EditorCommand command = {EditorCommandType::LoadScene};
-                    command.path = L"scene.aem";
+                    command.path = L"../../assets/scenes/scene.aem";
                     ExecuteCommand(command);
                 }
 

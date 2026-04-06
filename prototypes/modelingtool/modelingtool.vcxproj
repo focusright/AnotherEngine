@@ -102,12 +102,12 @@
     <ClInclude Include="..\..\third_party\imgui\imgui_impl_dx12.h" />
     <ClInclude Include="..\..\editor\EditorApp.h" />
     <ClInclude Include="..\..\third_party\d3dx12.h" />
-    <ClInclude Include="..\..\editor\modes\Modeling\EditableMesh.h" />
+    <ClInclude Include="..\..\editor\modes\modeling\EditableMesh.h" />
     <ClInclude Include="..\..\editor\EditorCamera.h" />
     <ClInclude Include="..\..\editor\EditorContext.h" />
     <ClInclude Include="..\..\engine\core\Engine.h" />
     <ClInclude Include="..\..\engine\gfx\GraphicsDevice.h" />
-    <ClInclude Include="..\..\editor\modes\Modeling\RenderMesh.h" />
+    <ClInclude Include="..\..\editor\modes\modeling\RenderMesh.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

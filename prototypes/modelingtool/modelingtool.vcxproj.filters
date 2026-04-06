@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="engine">
+      <UniqueIdentifier>{A1000000-0000-0000-0000-000000000001}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\core">
+      <UniqueIdentifier>{A1000000-0000-0000-0000-000000000002}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\gfx">
+      <UniqueIdentifier>{A1000000-0000-0000-0000-000000000003}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\editor">
+      <UniqueIdentifier>{A1000000-0000-0000-0000-000000000004}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\editor\modes">
+      <UniqueIdentifier>{A1000000-0000-0000-0000-000000000005}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="engine\editor\modes\modeling">
+      <UniqueIdentifier>{A1000000-0000-0000-0000-000000000006}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="third_party">
+      <UniqueIdentifier>{A1000000-0000-0000-0000-000000000007}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="third_party\imgui">
+      <UniqueIdentifier>{A1000000-0000-0000-0000-000000000008}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ClCompile Include="..\..\engine\editor\Gizmo.cpp">
+      <Filter>engine\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\engine\editor\EditorApp.cpp">
+      <Filter>engine\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\engine\editor\EditorCamera.cpp">
+      <Filter>engine\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\engine\editor\EditorMain.cpp">
+      <Filter>engine\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\engine\core\Engine.cpp">
+      <Filter>engine\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\engine\gfx\GraphicsDevice.cpp">
+      <Filter>engine\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\third_party\imgui\imgui.cpp">
+      <Filter>third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\third_party\imgui\imgui_draw.cpp">
+      <Filter>third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\third_party\imgui\imgui_tables.cpp">
+      <Filter>third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\third_party\imgui\imgui_widgets.cpp">
+      <Filter>third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\third_party\imgui\imgui_impl_win32.cpp">
+      <Filter>third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\third_party\imgui\imgui_impl_dx12.cpp">
+      <Filter>third_party\imgui</Filter>
+    </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ClInclude Include="..\..\engine\editor\EditorCommands.h">
+      <Filter>engine\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\engine\editor\EditorContext.h">
+      <Filter>engine\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\engine\editor\EditorApp.h">
+      <Filter>engine\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\engine\editor\EditorCamera.h">
+      <Filter>engine\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\engine\editor\Gizmo.h">
+      <Filter>engine\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\engine\editor\modes\modeling\EditableMesh.h">
+      <Filter>engine\editor\modes\modeling</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\engine\editor\modes\modeling\RenderMesh.h">
+      <Filter>engine\editor\modes\modeling</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\engine\core\Engine.h">
+      <Filter>engine\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\engine\gfx\GraphicsDevice.h">
+      <Filter>engine\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\third_party\d3dx12.h">
+      <Filter>third_party</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\third_party\imgui\imgui.h">
+      <Filter>third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\third_party\imgui\imgui_impl_win32.h">
+      <Filter>third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\third_party\imgui\imgui_impl_dx12.h">
+      <Filter>third_party\imgui</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

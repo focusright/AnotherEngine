@@ -1,8 +1,8 @@
 #include "editor/Gizmo.h"
 #include <cmath>
-#include "editor/modes/Modeling/EditableMesh.h"
+#include "editor/modes/modeling/EditableMesh.h"
 #include "editor/EditorCamera.h"
-#include "editor/modes/Modeling/RenderMesh.h"
+#include "editor/modes/modeling/RenderMesh.h"
 
 using namespace DirectX;
 

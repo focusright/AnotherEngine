@@ -5,8 +5,8 @@
 #include <wrl/client.h>
 #include <cwchar>
 
-#include "editor/modes/Modeling/EditableMesh.h"
-#include "editor/modes/Modeling/RenderMesh.h"
+#include "editor/modes/modeling/EditableMesh.h"
+#include "editor/modes/modeling/RenderMesh.h"
 #include "engine/gfx/GraphicsDevice.h"
 #include "engine/core/Engine.h"
 #include "editor/EditorApp.h"

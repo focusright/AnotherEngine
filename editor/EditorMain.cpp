@@ -5,6 +5,7 @@
 #include <wrl/client.h>
 #include <cwchar>
 
+#include "editor/EditorPaths.h"
 #include "editor/modes/modeling/EditableMesh.h"
 #include "editor/modes/modeling/RenderMesh.h"
 #include "engine/gfx/GraphicsDevice.h"
@@ -592,7 +593,7 @@ void DrawSceneWindow() {
         g_app.ExecuteCommand(command);
     }
 
-    const wchar_t* scenePath = L"../../assets/scenes/scene.aem";
+    const wchar_t* scenePath = kDefaultScenePath;
 
     if (ImGui::Button("Save")) {
         EditorCommand command = {EditorCommandType::SaveScene};

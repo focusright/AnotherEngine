@@ -97,6 +97,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\editor\EditorCommands.h" />
+    <ClInclude Include="..\..\editor\EditorPaths.h" />
     <ClInclude Include="..\..\editor\Gizmo.h" />
     <ClInclude Include="..\..\third_party\imgui\imgui.h" />
     <ClInclude Include="..\..\third_party\imgui\imgui_impl_win32.h" />

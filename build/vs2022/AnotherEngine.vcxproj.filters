@@ -26,7 +26,6 @@
       <UniqueIdentifier>{A1000000-0000-0000-0000-000000000008}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
-
   <ItemGroup>
     <ClCompile Include="..\..\editor\Gizmo.cpp">
       <Filter>editor</Filter>
@@ -65,7 +64,6 @@
       <Filter>third_party\imgui</Filter>
     </ClCompile>
   </ItemGroup>
-
   <ItemGroup>
     <ClInclude Include="..\..\editor\EditorCommands.h">
       <Filter>editor</Filter>
@@ -105,6 +103,9 @@
     </ClInclude>
     <ClInclude Include="..\..\third_party\imgui\imgui_impl_dx12.h">
       <Filter>third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\editor\EditorPaths.h">
+      <Filter>editor</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

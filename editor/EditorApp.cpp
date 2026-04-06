@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
+#include "editor/EditorPaths.h"
 #include "editor/EditorApp.h"
 #include "editor/modes/modeling/EditableMesh.h"
 #include "editor/modes/modeling/RenderMesh.h"
@@ -439,13 +440,13 @@ LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
                 if (!wasDown && wParam == 'S' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
                     EditorCommand command = {EditorCommandType::SaveScene};
-                    command.path = L"../../assets/scenes/scene.aem";
+                    command.path = kDefaultScenePath;
                     ExecuteCommand(command);
                 }
 
                 if (!wasDown && wParam == 'O' && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
                     EditorCommand command = {EditorCommandType::LoadScene};
-                    command.path = L"../../assets/scenes/scene.aem";
+                    command.path = kDefaultScenePath;
                     ExecuteCommand(command);
                 }
 

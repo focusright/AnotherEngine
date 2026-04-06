@@ -5,12 +5,12 @@
 #include <wrl/client.h>
 #include <cwchar>
 
-#include "EditableMesh.h"
-#include "RenderMesh.h"
-#include "GraphicsDevice.h"
-#include "Engine.h"
-#include "App.h"
-#include "EditorCommands.h"
+#include "editor/modes/Modeling/EditableMesh.h"
+#include "editor/modes/Modeling/RenderMesh.h"
+#include "engine/gfx/GraphicsDevice.h"
+#include "engine/core/Engine.h"
+#include "editor/EditorApp.h"
+#include "editor/EditorCommands.h"
 #include "third_party/imgui/imgui.h"
 #include "third_party/imgui/imgui_impl_win32.h"
 #include "third_party/imgui/imgui_impl_dx12.h"

@@ -1,7 +1,7 @@
-#include "Engine.h"
-#include "GraphicsDevice.h"
-#include "RenderMesh.h"
-#include "EditableMesh.h"
+#include "engine/core/Engine.h"
+#include "engine/gfx/GraphicsDevice.h"
+#include "editor/modes/modeling/RenderMesh.h"
+#include "editor/modes/modeling/EditableMesh.h"
 #include <DirectXMath.h>
 #include "third_party/imgui/imgui.h"
 #include "third_party/imgui/imgui_impl_dx12.h"

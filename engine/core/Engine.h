@@ -4,11 +4,11 @@
 #include <cstdint>
 #include <windows.h>
 #include <DirectXMath.h>
-#include <d3d12.h>
+#include "third_party/d3dx12.h"
 
 #pragma warning(push)
 #pragma warning(disable : 6001)
-#include "d3dx12.h"
+#include "third_party/d3dx12.h"
 #pragma warning(pop)
 
 class GraphicsDevice;

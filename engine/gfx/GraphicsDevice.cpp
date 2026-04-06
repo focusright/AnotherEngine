@@ -1,4 +1,4 @@
-#include "GraphicsDevice.h"
+#include "engine/gfx/GraphicsDevice.h"
 
 bool GraphicsDevice::CreateCommandQueue(ID3D12Device* device) {
     if (!device) { return false; }

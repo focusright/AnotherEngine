@@ -1,8 +1,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include "App.h"
-#include "EditableMesh.h"
-#include "RenderMesh.h"
+#include "editor/EditorApp.h"
+#include "editor/modes/Modeling/EditableMesh.h"
+#include "editor/modes/Modeling/RenderMesh.h"
 #include <DirectXMath.h>
 #include <algorithm>
 #include <cmath>

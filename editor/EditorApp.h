@@ -4,11 +4,11 @@
 #include <windowsx.h>
 #include <DirectXMath.h>
 #include <cstdint>
-#include "Engine.h"
-#include "EditorCamera.h"
-#include "EditorContext.h"
-#include "EditorCommands.h"
-#include "Gizmo.h"
+#include "engine/core/Engine.h"
+#include "editor/EditorCamera.h"
+#include "editor/EditorContext.h"
+#include "editor/EditorCommands.h"
+#include "editor/Gizmo.h"
 
 struct EditableMesh;
 struct RenderMesh;

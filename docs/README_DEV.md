@@ -11,7 +11,7 @@ The goal is to stop the project structure from hardening around `prototypes/mode
 ## Current Working Baseline
 The project currently compiles and runs.
 
-Behavior is intended to remain the same as the end of v0.0.2, while the source layout and project identity are being cleaned up.
+Behavior is intended to remain the same as the end of v0.0.2, while the source layout, build-file location, and project identity are being cleaned up.
 
 ## Current Source Layout
 
@@ -52,9 +52,12 @@ third_party/
     imgui_impl_dx12.h
     imgui_impl_dx12.cpp
 
-prototypes/
-  modelingtool/
+build/
+  vs2022/
     AnotherEngine.sln
     AnotherEngine.vcxproj
     AnotherEngine.vcxproj.filters
+
+assets/
+  scenes/
     scene.aem

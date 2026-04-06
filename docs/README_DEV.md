@@ -1,72 +1,60 @@
-# README_DEV.md
-
-## Build
-
-Open:
-
-`prototypes/modelingtool/modelingtool.sln`
-
-Select:
-- Configuration: `Debug`
-- Platform: `x64`
-
-Build and run with `F5`.
+# AEDD / Another Engine Developer Notes
 
 ## Current Version
+v0.0.2.1 - AE structure migration pass
 
-`v0.0.2`
+## Purpose of This Pass
+This pass migrates the former modeling tool prototype into the real Another Engine folder structure without changing editor/runtime behavior.
 
-Status: complete.
+The goal is to stop the project structure from hardening around `prototypes/modelingtool/` and prepare for later runtime spine work.
 
-The current prototype includes:
-- scene save/load via `.aem`
-- minimal Dear ImGui integration
-- command-driven editor actions
-- focus camera
-- world-space gizmo with translate / scale / rotate
+## Current Working Baseline
+The project currently compiles and runs.
 
-## Controls
+Behavior is intended to remain the same as the end of v0.0.2, while the source layout and project identity are being cleaned up.
 
-### Camera
-- `RMB + Mouse` → fly look
-- `RMB + WASD` → fly move
-- `MMB + Mouse` → orbit around persistent view pivot
-- `Shift + MMB + Mouse` → pan
-- Mouse wheel → dolly
-- `F` → focus active object
-
-### Scene / Editor
-- `LMB` → gizmo interaction / selection
-- `Ctrl+S` → save scene (`scene.aem`)
-- `Ctrl+O` → load scene (`scene.aem`)
-- `N` → add object
-- `Ctrl+D` → duplicate active object
-- `Delete` → delete active object
-
-## ImGui Scene Window
-
-The `Scene` window currently provides:
-- `Add`, `Duplicate`, `Delete`
-- `Save`, `Load`
-- object list selection
-- last command display
-- gizmo mode buttons: `Translate`, `Scale`, `Rotate`
-- direct editing for `Position`, `Rotation`, and `Scale`
-
-## Project Structure
-
-Primary active subtree:
+## Current Source Layout
 
 ```text
-prototypes/modelingtool/
-    main.cpp
-    App.*
-    Engine.*
-    EditableMesh.*
-    RenderMesh.*
-    EditorCamera.*
-    GraphicsDevice.*
-    Gizmo.*
-    EditorCommands.h
-    EditorContext.h
-    third_party/imgui/
+editor/
+  EditorApp.h
+  EditorApp.cpp
+  EditorCamera.h
+  EditorCamera.cpp
+  EditorCommands.h
+  EditorContext.h
+  EditorMain.cpp
+  Gizmo.h
+  Gizmo.cpp
+  modes/
+    modeling/
+      EditableMesh.h
+      RenderMesh.h
+
+engine/
+  core/
+    Engine.h
+    Engine.cpp
+  gfx/
+    GraphicsDevice.h
+    GraphicsDevice.cpp
+
+third_party/
+  d3dx12.h
+  imgui/
+    imgui.h
+    imgui.cpp
+    imgui_draw.cpp
+    imgui_tables.cpp
+    imgui_widgets.cpp
+    imgui_impl_win32.h
+    imgui_impl_win32.cpp
+    imgui_impl_dx12.h
+    imgui_impl_dx12.cpp
+
+prototypes/
+  modelingtool/
+    AnotherEngine.sln
+    AnotherEngine.vcxproj
+    AnotherEngine.vcxproj.filters
+    scene.aem

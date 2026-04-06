@@ -22,8 +22,8 @@ Move the former modeling tool prototype into the real Another Engine folder stru
 ## Current Structure
 - `engine/core/` - core engine runtime-side code
 - `engine/gfx/` - graphics device and D3D12 setup code
-- `engine/editor/` - editor app, camera, gizmo, commands, main entry
-- `engine/editor/modes/modeling/` - current modeling mode data structures
+- `editor/` - editor app, camera, gizmo, commands, main entry
+- `editor/modes/modeling/` - current modeling mode data structures
 - `third_party/` - shared third-party dependencies
 - `prototypes/modelingtool/` - legacy project location still holding the Visual Studio solution/project for now
 

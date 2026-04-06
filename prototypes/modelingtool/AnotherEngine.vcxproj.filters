@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="engine">
+    <Filter Include="editor">
       <UniqueIdentifier>{A1000000-0000-0000-0000-000000000001}</UniqueIdentifier>
     </Filter>
-    <Filter Include="engine\core">
+    <Filter Include="editor\modes">
       <UniqueIdentifier>{A1000000-0000-0000-0000-000000000002}</UniqueIdentifier>
     </Filter>
-    <Filter Include="engine\gfx">
+    <Filter Include="editor\modes\modeling">
       <UniqueIdentifier>{A1000000-0000-0000-0000-000000000003}</UniqueIdentifier>
     </Filter>
-    <Filter Include="engine\editor">
+    <Filter Include="engine">
       <UniqueIdentifier>{A1000000-0000-0000-0000-000000000004}</UniqueIdentifier>
     </Filter>
-    <Filter Include="engine\editor\modes">
+    <Filter Include="engine\core">
       <UniqueIdentifier>{A1000000-0000-0000-0000-000000000005}</UniqueIdentifier>
     </Filter>
-    <Filter Include="engine\editor\modes\modeling">
+    <Filter Include="engine\gfx">
       <UniqueIdentifier>{A1000000-0000-0000-0000-000000000006}</UniqueIdentifier>
     </Filter>
     <Filter Include="third_party">
@@ -28,17 +28,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ClCompile Include="..\..\engine\editor\Gizmo.cpp">
-      <Filter>engine\editor</Filter>
+    <ClCompile Include="..\..\editor\Gizmo.cpp">
+      <Filter>editor</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\engine\editor\EditorApp.cpp">
-      <Filter>engine\editor</Filter>
+    <ClCompile Include="..\..\editor\EditorApp.cpp">
+      <Filter>editor</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\engine\editor\EditorCamera.cpp">
-      <Filter>engine\editor</Filter>
+    <ClCompile Include="..\..\editor\EditorCamera.cpp">
+      <Filter>editor</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\engine\editor\EditorMain.cpp">
-      <Filter>engine\editor</Filter>
+    <ClCompile Include="..\..\editor\EditorMain.cpp">
+      <Filter>editor</Filter>
     </ClCompile>
     <ClCompile Include="..\..\engine\core\Engine.cpp">
       <Filter>engine\core</Filter>
@@ -67,26 +67,26 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ClInclude Include="..\..\engine\editor\EditorCommands.h">
-      <Filter>engine\editor</Filter>
+    <ClInclude Include="..\..\editor\EditorCommands.h">
+      <Filter>editor</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\engine\editor\EditorContext.h">
-      <Filter>engine\editor</Filter>
+    <ClInclude Include="..\..\editor\EditorContext.h">
+      <Filter>editor</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\engine\editor\EditorApp.h">
-      <Filter>engine\editor</Filter>
+    <ClInclude Include="..\..\editor\EditorApp.h">
+      <Filter>editor</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\engine\editor\EditorCamera.h">
-      <Filter>engine\editor</Filter>
+    <ClInclude Include="..\..\editor\EditorCamera.h">
+      <Filter>editor</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\engine\editor\Gizmo.h">
-      <Filter>engine\editor</Filter>
+    <ClInclude Include="..\..\editor\Gizmo.h">
+      <Filter>editor</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\engine\editor\modes\modeling\EditableMesh.h">
-      <Filter>engine\editor\modes\modeling</Filter>
+    <ClInclude Include="..\..\editor\modes\modeling\EditableMesh.h">
+      <Filter>editor\modes\modeling</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\engine\editor\modes\modeling\RenderMesh.h">
-      <Filter>engine\editor\modes\modeling</Filter>
+    <ClInclude Include="..\..\editor\modes\modeling\RenderMesh.h">
+      <Filter>editor\modes\modeling</Filter>
     </ClInclude>
     <ClInclude Include="..\..\engine\core\Engine.h">
       <Filter>engine\core</Filter>

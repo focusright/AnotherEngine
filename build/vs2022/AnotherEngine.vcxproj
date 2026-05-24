@@ -93,6 +93,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\editor\Gizmo.cpp" />
+    <ClCompile Include="..\..\engine\core\HostRunner.cpp" />
     <ClCompile Include="..\..\third_party\imgui\imgui.cpp" />
     <ClCompile Include="..\..\third_party\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\..\third_party\imgui\imgui_tables.cpp" />
@@ -109,6 +110,8 @@
     <ClInclude Include="..\..\editor\EditorCommands.h" />
     <ClInclude Include="..\..\editor\EditorPaths.h" />
     <ClInclude Include="..\..\editor\Gizmo.h" />
+    <ClInclude Include="..\..\engine\core\HostApp.h" />
+    <ClInclude Include="..\..\engine\core\HostRunner.h" />
     <ClInclude Include="..\..\third_party\imgui\imgui.h" />
     <ClInclude Include="..\..\third_party\imgui\imgui_impl_win32.h" />
     <ClInclude Include="..\..\third_party\imgui\imgui_impl_dx12.h" />

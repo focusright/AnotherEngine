@@ -63,6 +63,9 @@
     <ClCompile Include="..\..\third_party\imgui\imgui_impl_dx12.cpp">
       <Filter>third_party\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\engine\core\HostRunner.cpp">
+      <Filter>engine\core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\editor\EditorCommands.h">
@@ -106,6 +109,12 @@
     </ClInclude>
     <ClInclude Include="..\..\editor\EditorPaths.h">
       <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\engine\core\HostApp.h">
+      <Filter>engine\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\engine\core\HostRunner.h">
+      <Filter>engine\core</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -10,9 +10,9 @@
 #include "editor/EditorContext.h"
 #include "editor/EditorCommands.h"
 #include "editor/Gizmo.h"
+#include "editor/modes/modeling/RenderMesh.h"
 
 struct EditableMesh;
-struct RenderMesh;
 
 class App : public IHostApp {
 public:
@@ -87,7 +87,7 @@ private:
     HWND m_hwnd = nullptr;
 
     bool m_colorsInit = false;
-    DirectX::XMFLOAT4 m_baseColors[12] = {};
+    DirectX::XMFLOAT4 m_baseColors[RenderMesh::kMaxDrawVertexCount] = {};
 
     EditorCamera m_camera;
     POINT m_lastCameraMouse = { 0, 0 };

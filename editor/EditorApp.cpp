@@ -99,7 +99,7 @@ void App::Update(const HostFrame& frame) {
     if (!cam) return;
 
     if (!m_colorsInit) {
-        for (uint32_t i = 0; i < RenderMesh::kDrawVertexCount; ++i) {
+        for (uint32_t i = 0; i < m_renderMesh->drawVertexCount; ++i) {
             m_baseColors[i] = m_renderMesh->drawVertices[i].color;
         }
         m_colorsInit = true;
@@ -284,11 +284,11 @@ void App::Update(const HostFrame& frame) {
                 m_selectedVertex = hitVertex;
                 m_isDragging = false;
 
-                for (uint32_t i = 0; i < RenderMesh::kDrawVertexCount; ++i) {
+                for (uint32_t i = 0; i < m_renderMesh->drawVertexCount; ++i) {
                     m_renderMesh->drawVertices[i].color = m_baseColors[i];
                 }
 
-                for (uint32_t i = 0; i < RenderMesh::kDrawVertexCount; ++i) {
+                for (uint32_t i = 0; i < m_renderMesh->drawVertexCount; ++i) {
                     if ((int)m_renderMesh->drawToEdit[i] == m_selectedVertex) {
                         m_renderMesh->drawVertices[i].color = DirectX::XMFLOAT4(1, 1, 1, 1);
                     }
@@ -305,7 +305,7 @@ void App::Update(const HostFrame& frame) {
                 } else {
                     m_selectedVertex = -1;
 
-                    for (uint32_t i = 0; i < RenderMesh::kDrawVertexCount; ++i) {
+                    for (uint32_t i = 0; i < m_renderMesh->drawVertexCount; ++i) {
                         m_renderMesh->drawVertices[i].color = m_baseColors[i];
                     }
 
@@ -517,7 +517,7 @@ int App::HitTestVertex(int mouseX, int mouseY) {
     const float pickRadiusPx = 14.0f;
     const float pickRadiusSq = pickRadiusPx * pickRadiusPx;
 
-    for (uint32_t i = 0; i < EditableMesh::kVertexCount; ++i) {
+    for (uint32_t i = 0; i < m_editMesh->vertexCount; ++i) {
         DirectX::XMFLOAT3 p = m_editMesh->GetVertex((VertexID)i);
         DirectX::XMFLOAT3 pw = LocalVertexToWorld(p);
 
@@ -888,7 +888,7 @@ void App::SetActiveObject(uint32_t index) {
     m_gizmo.Reset();
 
     if (m_renderMesh && m_colorsInit) {
-        for (uint32_t i = 0; i < RenderMesh::kDrawVertexCount; ++i) {
+        for (uint32_t i = 0; i < m_renderMesh->drawVertexCount; ++i) {
             m_renderMesh->drawVertices[i].color = m_baseColors[i];
         }
 

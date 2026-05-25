@@ -30,6 +30,7 @@ public:
     void RenderFrame();
 
     void SetViewProj(const DirectX::XMFLOAT4X4& viewProj);
+    void SetMeshDrawVertexCount(uint32_t count) { m_meshDrawVertexCount = count; }
 
     // Simple scene support (multiple objects drawn with different world transforms).
     void SetObjectCount(uint32_t count);
@@ -59,6 +60,7 @@ private:
     ID3D12Resource* m_vertexBufferTetra = nullptr;
     ID3D12Resource* m_vertexBufferGrid = nullptr;
     uint32_t m_gridVertexCount = 0;
+    uint32_t m_meshDrawVertexCount = 0;
 
     ID3D12Fence* m_fence = nullptr;
     HANDLE m_fenceEvent = nullptr;

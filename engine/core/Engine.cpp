@@ -28,9 +28,12 @@ void Engine::SetRenderObjects(ID3D12CommandAllocator* commandAllocator, ID3D12Gr
 }
 
 void Engine::UpdateVertexBuffer(const EditableMesh* editMesh, RenderMesh* renderMesh, HWND hwnd) {
-    if (!m_vertexBufferTetra) { return; }
+    if (!m_vertexBufferTetra || !editMesh || !renderMesh) { return; }
 
-    for (uint32_t i = 0; i < RenderMesh::kDrawVertexCount; ++i) {
+    uint32_t count = renderMesh->drawVertexCount;
+    if (count > RenderMesh::kMaxDrawVertexCount) { count = RenderMesh::kMaxDrawVertexCount; }
+
+    for (uint32_t i = 0; i < count; ++i) {
         uint32_t ev = renderMesh->drawToEdit[i];
         renderMesh->drawVertices[i].position = editMesh->GetVertex(ev);
     }
@@ -46,8 +49,9 @@ void Engine::UpdateVertexBuffer(const EditableMesh* editMesh, RenderMesh* render
         return;
     }
 
-    memcpy(pVertexDataBegin, renderMesh->drawVertices, sizeof(renderMesh->drawVertices));
+    memcpy(pVertexDataBegin, renderMesh->drawVertices, sizeof(Vertex) * count);
     m_vertexBufferTetra->Unmap(0, nullptr);
+    m_meshDrawVertexCount = count;
 }
 
 void Engine::PopulateCommandList() {
@@ -106,7 +110,7 @@ void Engine::PopulateCommandList() {
     
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView{
         m_vertexBufferTetra->GetGPUVirtualAddress(),
-        sizeof(Vertex) * RenderMesh::kDrawVertexCount,
+        sizeof(Vertex) * RenderMesh::kMaxDrawVertexCount,
         sizeof(Vertex)
     };
     m_commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
@@ -134,7 +138,7 @@ void Engine::PopulateCommandList() {
         }
         m_commandList->SetGraphicsRoot32BitConstants(1, 4, &tint, 0);
 
-        m_commandList->DrawInstanced(RenderMesh::kDrawVertexCount, 1, 0, 0);
+        m_commandList->DrawInstanced(m_meshDrawVertexCount, 1, 0, 0);
     }
 
     // Draw gizmo last (so we can classify visible vs occluded using depth).

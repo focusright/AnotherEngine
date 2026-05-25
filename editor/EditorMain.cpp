@@ -108,6 +108,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
     g_editorCamera.SetLens(DirectX::XM_PIDIV4, 0.1f, 1000.0f);
     g_engine.SetGraphicsDevice(&g_gfx);
     g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_pipelineStateLine.Get(), g_pipelineStateLineOccluded.Get(), g_pipelineStateGizmo.Get(), g_pipelineStateGizmoOccluded.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), g_vertexBufferGrid.Get(), g_gridVertexCount, WINDOW_WIDTH, WINDOW_HEIGHT);
+    g_engine.SetMeshDrawVertexCount(g_renderMesh.drawVertexCount);
     g_engine.SetObjectCount(2);
     g_app.SetWindow(g_hwnd);
     g_app.SetEngine(&g_engine);
@@ -448,28 +449,10 @@ void CreateGridVertexBuffer() {
 }
 
 void CreateVertexBuffer() {
-    // Create vertex buffer (tetrahedron)
+    // Create editable tetrahedron, then build GPU draw vertices from editable topology.
     const float s = 0.8f;
     g_editMesh.BuildTetrahedron(s);
-
-    // Build RenderMesh draw vertices + mapping from EditableMesh topology.
-    for (uint32_t face = 0; face < EditableMesh::kTriangleCount; ++face) {
-        for (uint32_t corner = 0; corner < 3; ++corner) {
-            uint32_t draw = face * 3 + corner;
-            VertexID vertex = g_editMesh.GetTriangleVertex(face, corner);
-
-            g_renderMesh.drawToEdit[draw] = vertex;
-            g_renderMesh.drawVertices[draw].position = g_editMesh.GetVertex(vertex);
-
-            // Simple coloring: one color per face.
-            switch (face) {
-            case 0: g_renderMesh.drawVertices[draw].color = XMFLOAT4(1, 0, 0, 1); break;
-            case 1: g_renderMesh.drawVertices[draw].color = XMFLOAT4(0, 1, 0, 1); break;
-            case 2: g_renderMesh.drawVertices[draw].color = XMFLOAT4(0, 0, 1, 1); break;
-            default: g_renderMesh.drawVertices[draw].color = XMFLOAT4(1, 1, 0, 1); break;
-            }
-        }
-    }
+    g_renderMesh.BuildFromEditable(g_editMesh);
 
     const UINT vertexBufferSize = sizeof(g_renderMesh.drawVertices);
 
@@ -488,7 +471,7 @@ void CreateVertexBuffer() {
     UINT8* pVertexDataBegin = nullptr;
     D3D12_RANGE readRange = { 0, 0 };
     g_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
-    memcpy(pVertexDataBegin, g_renderMesh.drawVertices, sizeof(g_renderMesh.drawVertices));
+    memcpy(pVertexDataBegin, g_renderMesh.drawVertices, sizeof(Vertex) * g_renderMesh.drawVertexCount);
     g_vertexBuffer->Unmap(0, nullptr);
 
     g_renderMesh.dirty = false;

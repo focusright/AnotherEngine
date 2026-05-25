@@ -1,25 +1,28 @@
 # AEDD PROJECT STATE
 
 ## Current Version
-v0.0.3 - explicit editable mesh topology
+v0.0.3 - bounded editable mesh capacity/counts
 
 ## Status
 In progress.
 
 ## Current Focus
-AE is moving the modeling tool away from hardcoded draw-vertex tetrahedron setup and toward an editable CPU mesh model that owns vertices plus triangle topology.
+AE is turning the modeling mesh from fixed tetra-only arrays into bounded editable topology with active counts.
 
 ## v0.0.3 Current Step
-The first v0.0.3 step keeps the visual result the same but changes the data ownership:
+The second v0.0.3 step keeps the visible tetrahedron the same but changes the mesh storage model:
 
-- `EditableMesh` now stores tetrahedron triangle topology explicitly
-- `EditableMesh::BuildTetrahedron` owns the primitive's vertex and face construction
-- `CreateVertexBuffer` builds `RenderMesh` draw vertices from `EditableMesh` topology
-- vertex picking uses `EditableMesh::kVertexCount` instead of a hardcoded vertex count
-- selection color loops use `RenderMesh::kDrawVertexCount` instead of hardcoded draw-vertex counts
+- `EditableMesh` now has `kMaxVertices` and `kMaxTriangles`
+- `EditableMesh` now tracks active `vertexCount` and `triangleCount`
+- vertices and triangles are added through `AddVertex` and `AddTriangle`
+- `BuildTetrahedron` now builds through the same add path future modeling operations will use
+- `RenderMesh` now has `kMaxDrawVertexCount`
+- `RenderMesh` now tracks active `drawVertexCount`
+- `RenderMesh::BuildFromEditable` converts editable topology into GPU draw vertices
+- the renderer draws `m_meshDrawVertexCount` instead of a hardcoded tetra draw count
 
 ## Why This Matters
-Extrude, delete face, edge transforms, face splits, and later generated geometry need topology to exist as editable CPU-side data before GPU draw vertices are rebuilt.
+Topology editing needs room to grow and shrink the mesh. This step gives AE bounded mesh capacity and active counts before adding operations such as extrude, delete face, and face split.
 
 ## Next Planned Step
-Replace fixed tetra-only arrays with bounded editable mesh capacity/counts so the modeling tool can add and remove topology without changing the renderer yet.
+v0.0.3 Task 3 - add triangle/face picking as a modeling selection primitive.

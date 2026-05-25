@@ -450,40 +450,24 @@ void CreateGridVertexBuffer() {
 void CreateVertexBuffer() {
     // Create vertex buffer (tetrahedron)
     const float s = 0.8f;
+    g_editMesh.BuildTetrahedron(s);
 
-    // Editable (4 vertices)
-    XMFLOAT3 tetraPos[EditableMesh::kVertexCount] = {
-        {  0.0f,   0.0f,   s },         // 0
-        {  0.9428f * s,  0.0f,  -0.3333f * s }, // 1
-        { -0.4714f * s,  0.8165f * s, -0.3333f * s }, // 2
-        { -0.4714f * s, -0.8165f * s, -0.3333f * s }, // 3
-    };
+    // Build RenderMesh draw vertices + mapping from EditableMesh topology.
+    for (uint32_t face = 0; face < EditableMesh::kTriangleCount; ++face) {
+        for (uint32_t corner = 0; corner < 3; ++corner) {
+            uint32_t draw = face * 3 + corner;
+            VertexID vertex = g_editMesh.GetTriangleVertex(face, corner);
 
-    // Triangle list indices (12 draw verts = 4 faces)
-    uint32_t tri[RenderMesh::kDrawVertexCount] = {
-        0, 1, 2,
-        0, 2, 3,
-        0, 3, 1,
-        1, 3, 2
-    };
+            g_renderMesh.drawToEdit[draw] = vertex;
+            g_renderMesh.drawVertices[draw].position = g_editMesh.GetVertex(vertex);
 
-    // Write EditableMesh truth
-    for (uint32_t i = 0; i < EditableMesh::kVertexCount; ++i) {
-        g_editMesh.SetVertex(i, tetraPos[i]);
-    }
-
-    // Build RenderMesh draw vertices + mapping
-    for (uint32_t i = 0; i < RenderMesh::kDrawVertexCount; ++i) {
-        g_renderMesh.drawToEdit[i] = tri[i];
-        g_renderMesh.drawVertices[i].position = g_editMesh.GetVertex(tri[i]);
-
-        // Simple coloring: one color per face (3 vertices per face)
-        uint32_t face = i / 3;
-        switch (face) {
-        case 0: g_renderMesh.drawVertices[i].color = XMFLOAT4(1, 0, 0, 1); break;
-        case 1: g_renderMesh.drawVertices[i].color = XMFLOAT4(0, 1, 0, 1); break;
-        case 2: g_renderMesh.drawVertices[i].color = XMFLOAT4(0, 0, 1, 1); break;
-        default: g_renderMesh.drawVertices[i].color = XMFLOAT4(1, 1, 0, 1); break;
+            // Simple coloring: one color per face.
+            switch (face) {
+            case 0: g_renderMesh.drawVertices[draw].color = XMFLOAT4(1, 0, 0, 1); break;
+            case 1: g_renderMesh.drawVertices[draw].color = XMFLOAT4(0, 1, 0, 1); break;
+            case 2: g_renderMesh.drawVertices[draw].color = XMFLOAT4(0, 0, 1, 1); break;
+            default: g_renderMesh.drawVertices[draw].color = XMFLOAT4(1, 1, 0, 1); break;
+            }
         }
     }
 

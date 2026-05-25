@@ -12,6 +12,8 @@ int HostRunner::Run(IHostApp& app) {
     QueryPerformanceCounter(&prev);
 
     MSG msg = {};
+    float totalTime = 0.0f;
+    uint64_t frameIndex = 0;
 
     while (msg.message != WM_QUIT) {
         app.BeginFrame();
@@ -22,12 +24,20 @@ int HostRunner::Run(IHostApp& app) {
         LARGE_INTEGER now = {};
         QueryPerformanceCounter(&now);
 
-        float dt = float(double(now.QuadPart - prev.QuadPart) / double(freq.QuadPart));
+        float rawDt = float(double(now.QuadPart - prev.QuadPart) / double(freq.QuadPart));
         prev = now;
 
+        float dt = rawDt;
         if (dt > maxFrameDt) { dt = maxFrameDt; }
+        totalTime += dt;
 
-        app.Update(dt);
+        HostFrame frame = {};
+        frame.dt = dt;
+        frame.rawDt = rawDt;
+        frame.totalTime = totalTime;
+        frame.frameIndex = frameIndex++;
+
+        app.Update(frame);
         app.BuildFrameUI();
         app.Render();
     }

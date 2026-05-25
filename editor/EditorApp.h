@@ -25,7 +25,7 @@ public:
 
     void BeginFrame() override;
     void PumpMessages(MSG& msg) override;
-    void Update(float dt) override;
+    void Update(const HostFrame& frame) override;
     void BuildFrameUI() override;
     void Render() override;
 
@@ -97,6 +97,7 @@ private:
 
     EditorContext m_ctx;
     const char* m_lastCommandName = "None";
+    HostFrame m_frame = {};
 
     static const uint32_t kMaxObjects = 16;
     uint32_t m_objectCount = 2;

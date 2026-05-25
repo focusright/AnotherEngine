@@ -89,7 +89,10 @@ void App::BeginFrame() {
     m_input.fPressed = false;
 }
 
-void App::Update(float dt) {
+void App::Update(const HostFrame& frame) {
+    m_frame = frame;
+    float dt = frame.dt;
+
     if (!m_engine || !m_editMesh || !m_renderMesh) return;
 
     EditorCamera* cam = m_ctx.camera;
@@ -1065,6 +1068,8 @@ void App::DrawSceneWindow() {
 
     ImGui::Separator();
     ImGui::Text("Last Command: %s", LastCommandName());
+    ImGui::Text("Frame: %llu", (unsigned long long)m_frame.frameIndex);
+    ImGui::Text("dt: %.4f  total: %.2f", m_frame.dt, m_frame.totalTime);
     ImGui::Separator();
 
     ImGui::Text("Gizmo Mode: %s", GizmoModeName());

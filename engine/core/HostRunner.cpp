@@ -4,7 +4,7 @@
 #include <windows.h>
 
 int HostRunner::Run(IHostApp& app) {
-    const float maxFrameDt = 0.25f;
+    const float maxFrameDt = 0.25f; // Clamp huge stalls so editor motion/timers do not jump forward by seconds.
 
     LARGE_INTEGER freq = {};
     LARGE_INTEGER prev = {};

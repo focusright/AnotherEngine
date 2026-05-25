@@ -10,6 +10,7 @@
 #include "editor/modes/modeling/RenderMesh.h"
 #include "engine/gfx/GraphicsDevice.h"
 #include "engine/core/Engine.h"
+#include "engine/core/HostRunner.h"
 #include "editor/EditorApp.h"
 #include "editor/EditorCommands.h"
 #include "third_party/imgui/imgui.h"
@@ -71,9 +72,6 @@ void CreateGridVertexBuffer();
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void InitializeImGui();
 void ShutdownImGui();
-void BeginImGuiFrame();
-void EndImGuiFrame();
-void DrawSceneWindow();
 
 static void ShutdownD3D() {
     g_engine.WaitForGpu();
@@ -117,32 +115,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
 
     InitializeImGui();
 
-    LARGE_INTEGER freq;
-    LARGE_INTEGER prev;
-    QueryPerformanceFrequency(&freq);
-    QueryPerformanceCounter(&prev);
-
-    MSG msg = {};
-    while (msg.message != WM_QUIT) {
-        g_app.BeginFrameInput();
-        g_app.PumpMessages(msg);
-
-        LARGE_INTEGER now;
-        QueryPerformanceCounter(&now);
-        float dt = float(double(now.QuadPart - prev.QuadPart) / double(freq.QuadPart));
-        prev = now;
-
-        BeginImGuiFrame();
-        DrawSceneWindow();
-        EndImGuiFrame();
-
-        g_app.Update(dt);
-        g_engine.RenderFrame();
-    }
+    int exitCode = HostRunner::Run(g_app);
 
     ShutdownImGui();
     ShutdownD3D();
-    return static_cast<int>(msg.wParam);
+    return exitCode;
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -562,117 +539,3 @@ void ShutdownImGui() {
     ImGui::DestroyContext();
 }
 
-void BeginImGuiFrame() {
-    ImGui_ImplDX12_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
-}
-
-void EndImGuiFrame() {
-    ImGui::Render();
-}
-
-void DrawSceneWindow() {
-    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(260, 300), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Scene");
-
-    if (ImGui::Button("Add")) {
-        EditorCommand command = {EditorCommandType::AddObject};
-        command.pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-        g_app.ExecuteCommand(command);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Duplicate")) {
-        EditorCommand command = {EditorCommandType::DuplicateActiveObject};
-        g_app.ExecuteCommand(command);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Delete")) {
-        EditorCommand command = {EditorCommandType::DeleteActiveObject};
-        g_app.ExecuteCommand(command);
-    }
-
-    std::wstring scenePath = GetDefaultScenePath();
-
-    if (ImGui::Button("Save")) {
-        EnsureDefaultSceneDirectoryExists();
-        EditorCommand command = {EditorCommandType::SaveScene};
-        command.path = scenePath.c_str();
-        g_app.ExecuteCommand(command);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Load")) {
-        EditorCommand command = {EditorCommandType::LoadScene};
-        command.path = scenePath.c_str();
-        g_app.ExecuteCommand(command);
-    }
-
-    ImGui::Separator();
-    ImGui::Text("OBJECT LIST:");
-
-    for (uint32_t i = 0; i < g_app.ObjectCount(); ++i) {
-        char label[32];
-        sprintf_s(label, "Object %u", i);
-        bool selected = (i == g_app.ActiveObject());
-        if (ImGui::Selectable(label, selected)) {
-            EditorCommand command = {EditorCommandType::SetActiveObject};
-            command.objectIndex = i;
-            g_app.ExecuteCommand(command);
-        }
-    }
-
-    ImGui::Separator();
-    ImGui::Text("Last Command: %s", g_app.LastCommandName());
-    ImGui::Separator();
-
-    ImGui::Text("Gizmo Mode: %s", g_app.GizmoModeName());
-
-    if (ImGui::Button("Translate")) {
-        EditorCommand command = { EditorCommandType::SetGizmoMode };
-        command.gizmoMode = (uint32_t)GizmoMode::Translate;
-        g_app.ExecuteCommand(command);
-    }
-
-    ImGui::SameLine();
-
-    if (ImGui::Button("Scale")) {
-        EditorCommand command = { EditorCommandType::SetGizmoMode };
-        command.gizmoMode = (uint32_t)GizmoMode::Scale;
-        g_app.ExecuteCommand(command);
-    }
-
-    ImGui::SameLine();
-
-    if (ImGui::Button("Rotate")) {
-        EditorCommand command = { EditorCommandType::SetGizmoMode };
-        command.gizmoMode = (uint32_t)GizmoMode::Rotate;
-        g_app.ExecuteCommand(command);
-    }
-
-    ImGui::Separator();
-
-    DirectX::XMFLOAT3 pos;
-    DirectX::XMFLOAT3 rot;
-    DirectX::XMFLOAT3 scale;
-    if (g_app.GetActiveObjectTransform(pos, rot, scale)) {
-        float posEdit[3] = { pos.x, pos.y, pos.z };
-        float rotEdit[3] = { rot.x, rot.y, rot.z };
-        float scaleEdit[3] = { scale.x, scale.y, scale.z };
-
-        bool changed = false;
-        changed |= ImGui::DragFloat3("Position", posEdit, 0.05f);
-        changed |= ImGui::DragFloat3("Rotation", rotEdit, 0.01f);
-        changed |= ImGui::DragFloat3("Scale", scaleEdit, 0.05f);
-
-        if (changed) {
-            EditorCommand command = {EditorCommandType::SetActiveTransform};
-            command.pos = DirectX::XMFLOAT3(posEdit[0], posEdit[1], posEdit[2]);
-            command.rot = DirectX::XMFLOAT3(rotEdit[0], rotEdit[1], rotEdit[2]);
-            command.scale = DirectX::XMFLOAT3(scaleEdit[0], scaleEdit[1], scaleEdit[2]);
-            g_app.ExecuteCommand(command);
-        }
-    }
-
-    ImGui::End();
-}

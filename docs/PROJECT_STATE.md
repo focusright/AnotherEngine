@@ -1,13 +1,13 @@
 # AEDD PROJECT STATE
 
 ## Current Version
-v0.0.2.1 - AE structure migration pass
+v0.0.2.2 - runtime spine bootstrap
 
 ## Status
 Complete.
 
 ## Current Focus
-Lock the structural migration from prototype layout to real engine/editor/build/content layout without changing runtime behavior.
+AE now has a shared host runner that owns the outer frame loop, high-resolution timing, and fixed 24 FPS simulation stepping.
 
 ## Completed Before v0.0.2.1
 - v0.0.2 completed

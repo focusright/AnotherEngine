@@ -5,6 +5,7 @@
 #include <DirectXMath.h>
 #include <cstdint>
 #include "engine/core/Engine.h"
+#include "engine/core/HostApp.h"
 #include "editor/EditorCamera.h"
 #include "editor/EditorContext.h"
 #include "editor/EditorCommands.h"
@@ -13,7 +14,7 @@
 struct EditableMesh;
 struct RenderMesh;
 
-class App {
+class App : public IHostApp {
 public:
     App(EditorCamera& camera);
 
@@ -22,9 +23,11 @@ public:
     void SetMeshes(EditableMesh* editMesh, RenderMesh* renderMesh) { m_editMesh = editMesh; m_renderMesh = renderMesh; }
     void SetWindow(HWND hwnd) { m_hwnd = hwnd; m_ctx.hwnd = hwnd; }
 
-    void BeginFrameInput();
-    void Update(float dt);
-    void PumpMessages(MSG& msg);
+    void ClearFrameInputEdges() override;
+    void PumpMessages(MSG& msg) override;
+    void BuildFrameUI() override;
+    void FixedUpdate(float dt) override;
+    void Render() override;
 
     LRESULT HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bool& handled);
 
@@ -116,4 +119,5 @@ private:
     void UpdateViewProj();
     void FocusCamera();
     EditorCamera* Cam() { return m_ctx.camera; }
+    void DrawSceneWindow();
 };

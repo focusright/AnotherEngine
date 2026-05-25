@@ -4,11 +4,16 @@
 #include "editor/EditorApp.h"
 #include "editor/modes/modeling/EditableMesh.h"
 #include "editor/modes/modeling/RenderMesh.h"
+#include "third_party/imgui/imgui.h"
+#include "third_party/imgui/imgui_impl_win32.h"
+#include "third_party/imgui/imgui_impl_dx12.h"
+
 #include <DirectXMath.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <string>
 
 using namespace DirectX;
 
@@ -25,6 +30,16 @@ static const char* CommandName(EditorCommandType type) {
     case EditorCommandType::FocusCamera: return "FocusCamera";
     default: return "None";
     }
+}
+
+static void BeginImGuiFrame() {
+    ImGui_ImplDX12_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+}
+
+static void EndImGuiFrame() {
+    ImGui::Render();
 }
 
 App::App(EditorCamera& camera) : m_camera(camera) {
@@ -63,7 +78,7 @@ m_objectCount = 2;
     m_objectPos[1] = DirectX::XMFLOAT3(2.0f, 0.0f, 0.0f);
 }
 
-void App::BeginFrameInput() {
+void App::ClearFrameInputEdges() {
     m_input.lmbPressed = false;
     m_input.lmbReleased = false;
     m_input.rmbPressed = false;
@@ -74,7 +89,7 @@ void App::BeginFrameInput() {
     m_input.fPressed = false;
 }
 
-void App::Update(float dt) {
+void App::FixedUpdate(float dt) {
     if (!m_engine || !m_editMesh || !m_renderMesh) return;
 
     EditorCamera* cam = m_ctx.camera;
@@ -352,6 +367,16 @@ void App::PumpMessages(MSG& msg) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+}
+
+void App::BuildFrameUI() {
+    BeginImGuiFrame();
+    DrawSceneWindow();
+    EndImGuiFrame();
+}
+
+void App::Render() {
+    if (m_engine) { m_engine->RenderFrame(); }
 }
 
 LRESULT App::HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bool& handled) {
@@ -979,4 +1004,117 @@ bool App::ExecuteCommand(const EditorCommand& command) {
     }
 
     return ok;
+}
+
+void App::DrawSceneWindow() {
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(260, 300), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Scene");
+
+    if (ImGui::Button("Add")) {
+        EditorCommand command = {EditorCommandType::AddObject};
+        command.pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+        ExecuteCommand(command);
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Duplicate")) {
+        EditorCommand command = {EditorCommandType::DuplicateActiveObject};
+        ExecuteCommand(command);
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Delete")) {
+        EditorCommand command = {EditorCommandType::DeleteActiveObject};
+        ExecuteCommand(command);
+    }
+
+    std::wstring scenePath = GetDefaultScenePath();
+
+    if (ImGui::Button("Save")) {
+        EnsureDefaultSceneDirectoryExists();
+        EditorCommand command = {EditorCommandType::SaveScene};
+        command.path = scenePath.c_str();
+        ExecuteCommand(command);
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Load")) {
+        EditorCommand command = {EditorCommandType::LoadScene};
+        command.path = scenePath.c_str();
+        ExecuteCommand(command);
+    }
+
+    ImGui::Separator();
+    ImGui::Text("OBJECT LIST:");
+
+    for (uint32_t i = 0; i < ObjectCount(); ++i) {
+        char label[32];
+        sprintf_s(label, "Object %u", i);
+        bool selected = (i == ActiveObject());
+
+        if (ImGui::Selectable(label, selected)) {
+            EditorCommand command = {EditorCommandType::SetActiveObject};
+            command.objectIndex = i;
+            ExecuteCommand(command);
+        }
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Last Command: %s", LastCommandName());
+    ImGui::Separator();
+
+    ImGui::Text("Gizmo Mode: %s", GizmoModeName());
+
+    if (ImGui::Button("Translate")) {
+        EditorCommand command = {EditorCommandType::SetGizmoMode};
+        command.gizmoMode = (uint32_t)GizmoMode::Translate;
+        ExecuteCommand(command);
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Scale")) {
+        EditorCommand command = {EditorCommandType::SetGizmoMode};
+        command.gizmoMode = (uint32_t)GizmoMode::Scale;
+        ExecuteCommand(command);
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Rotate")) {
+        EditorCommand command = {EditorCommandType::SetGizmoMode};
+        command.gizmoMode = (uint32_t)GizmoMode::Rotate;
+        ExecuteCommand(command);
+    }
+
+    ImGui::Separator();
+
+    DirectX::XMFLOAT3 pos;
+    DirectX::XMFLOAT3 rot;
+    DirectX::XMFLOAT3 scale;
+
+    if (GetActiveObjectTransform(pos, rot, scale)) {
+        float posEdit[3] = { pos.x, pos.y, pos.z };
+        float rotEdit[3] = { rot.x, rot.y, rot.z };
+        float scaleEdit[3] = { scale.x, scale.y, scale.z };
+
+        bool changed = false;
+        changed |= ImGui::DragFloat3("Position", posEdit, 0.05f);
+        changed |= ImGui::DragFloat3("Rotation", rotEdit, 0.01f);
+        changed |= ImGui::DragFloat3("Scale", scaleEdit, 0.05f);
+
+        if (changed) {
+            EditorCommand command = {EditorCommandType::SetActiveTransform};
+            command.pos = DirectX::XMFLOAT3(posEdit[0], posEdit[1], posEdit[2]);
+            command.rot = DirectX::XMFLOAT3(rotEdit[0], rotEdit[1], rotEdit[2]);
+            command.scale = DirectX::XMFLOAT3(scaleEdit[0], scaleEdit[1], scaleEdit[2]);
+            ExecuteCommand(command);
+        }
+    }
+
+    ImGui::End();
 }

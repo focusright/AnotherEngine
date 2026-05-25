@@ -4,7 +4,6 @@
 #include <windows.h>
 
 int HostRunner::Run(IHostApp& app) {
-    const float fixedDt = 1.0f / 24.0f;
     const float maxFrameDt = 0.25f;
 
     LARGE_INTEGER freq = {};
@@ -12,12 +11,10 @@ int HostRunner::Run(IHostApp& app) {
     QueryPerformanceFrequency(&freq);
     QueryPerformanceCounter(&prev);
 
-    float accumulator = fixedDt; // Force one initial tick so render state is seeded before the first visible frame.
     MSG msg = {};
 
-    app.ClearFrameInputEdges();
-
     while (msg.message != WM_QUIT) {
+        app.BeginFrame();
         app.PumpMessages(msg);
 
         if (msg.message == WM_QUIT) { break; }
@@ -25,21 +22,13 @@ int HostRunner::Run(IHostApp& app) {
         LARGE_INTEGER now = {};
         QueryPerformanceCounter(&now);
 
-        float frameDt = float(double(now.QuadPart - prev.QuadPart) / double(freq.QuadPart));
+        float dt = float(double(now.QuadPart - prev.QuadPart) / double(freq.QuadPart));
         prev = now;
 
-        if (frameDt > maxFrameDt) { frameDt = maxFrameDt; }
+        if (dt > maxFrameDt) { dt = maxFrameDt; }
 
-        accumulator += frameDt;
-
+        app.Update(dt);
         app.BuildFrameUI();
-
-        while (accumulator >= fixedDt && msg.message != WM_QUIT) {
-            app.FixedUpdate(fixedDt);
-            app.ClearFrameInputEdges();
-            accumulator -= fixedDt;
-        }
-
         app.Render();
     }
 

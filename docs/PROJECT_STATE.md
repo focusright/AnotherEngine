@@ -7,61 +7,28 @@ v0.0.2.2 - runtime spine bootstrap
 Complete.
 
 ## Current Focus
-AE now has a shared host runner that owns the outer frame loop, high-resolution timing, and fixed 24 FPS simulation stepping.
+AE now has a shared host runner that owns the outer editor frame loop and high-resolution timing. The AE editor updates with variable `dt`; fixed 24 FPS stepping remains a future DD runtime policy.
 
-## Completed Before v0.0.2.1
-- v0.0.2 completed
-- minimal ImGui integration exists
-- scene save/load exists
-- object transform gizmo exists
-- current editor remains functional as the working baseline
+## v0.0.2.2 Outcome
+At the end of v0.0.2.2:
 
-## v0.0.2.1 Goals
-- migrate code out of `prototypes/modelingtool` into real editor/engine folders
-- move Visual Studio solution/project files into a real build folder
-- move default scene/content files out of `prototypes/`
-- preserve behavior while improving structure
-- prepare AE to become the engine dependency for Dark Defiance later
-- avoid feature work during this pass
+- `engine/core/HostApp.h` defines the neutral host-facing app interface
+- `engine/core/HostRunner.h/.cpp` own the shared outer editor loop
+- `EditorMain.cpp` delegates loop ownership to `HostRunner`
+- `EditorApp` implements the hosted-app interface
+- per-frame editor UI build logic lives in `EditorApp`
+- AE editor continues to update with variable frame delta
+- the host spine leaves room for a future DD runtime timing policy, including fixed 24 FPS gameplay stepping
 
-## Current Structure
-- `editor/` - editor app, camera, gizmo, commands, shared editor paths, main entry
-- `editor/modes/modeling/` - current modeling mode data structures
-- `engine/core/` - core engine runtime-side code
-- `engine/gfx/` - graphics device and D3D12 setup code
-- `third_party/` - shared third-party dependencies
-- `build/vs2022/` - Visual Studio solution/project files
-- `assets/scenes/` - current scene/content files
-- `docs/` - current developer/project documentation
+## Canonical Editor Frame Order
+The v0.0.2.2 host runner uses this order:
 
-## Rules For This Pass
-- structure changes only
-- no behavior changes unless required for compile/build/asset path repair
-- keep diffs small and surgical
-- do not begin runtime spine work yet
-- do not begin v0.0.3 topology refactor work yet
-
-## v0.0.2.1 Completion Criteria
-This pass is considered complete when all of the following are true:
-
-- code no longer lives under `prototypes/modelingtool/`
-- build files no longer live under `prototypes/modelingtool/`
-- the Solution Explorer folder structure matches the real repo layout
-- Debug and Release use consistent include paths
-- Debug and Release both copy `assets/scenes/scene.aem` beside the built executable
-- the default scene path is resolved relative to the executable directory
-- default scene path usage is centralized rather than duplicated across files
-- docs match the real repo layout and current build/runtime behavior
-
-## v0.0.2.1 Outcome
-At the end of v0.0.2.1:
-
-- source lives in `editor/`, `engine/`, and `third_party/`
-- build files live in `build/vs2022/`
-- content lives in `assets/scenes/`
-- the default scene is addressed through shared path helpers
-- Visual Studio debug runs and built binaries follow the same scene-file rule
-- the repo no longer presents itself as a prototype-first project
+1. clear transient per-frame input edges
+2. pump Windows messages
+3. measure elapsed real time
+4. update editor app with variable `dt`
+5. build editor UI
+6. render
 
 ## Next Planned Step
-v0.0.2.2 - runtime spine bootstrap
+v0.0.2.3 - continue runtime/session preparation, then return to v0.0.3 modeling topology work

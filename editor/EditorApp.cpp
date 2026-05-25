@@ -78,7 +78,7 @@ m_objectCount = 2;
     m_objectPos[1] = DirectX::XMFLOAT3(2.0f, 0.0f, 0.0f);
 }
 
-void App::ClearFrameInputEdges() {
+void App::BeginFrame() {
     m_input.lmbPressed = false;
     m_input.lmbReleased = false;
     m_input.rmbPressed = false;
@@ -89,7 +89,7 @@ void App::ClearFrameInputEdges() {
     m_input.fPressed = false;
 }
 
-void App::FixedUpdate(float dt) {
+void App::Update(float dt) {
     if (!m_engine || !m_editMesh || !m_renderMesh) return;
 
     EditorCamera* cam = m_ctx.camera;

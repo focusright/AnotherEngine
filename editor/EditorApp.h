@@ -23,10 +23,10 @@ public:
     void SetMeshes(EditableMesh* editMesh, RenderMesh* renderMesh) { m_editMesh = editMesh; m_renderMesh = renderMesh; }
     void SetWindow(HWND hwnd) { m_hwnd = hwnd; m_ctx.hwnd = hwnd; }
 
-    void ClearFrameInputEdges() override;
+    void BeginFrame() override;
     void PumpMessages(MSG& msg) override;
+    void Update(float dt) override;
     void BuildFrameUI() override;
-    void FixedUpdate(float dt) override;
     void Render() override;
 
     LRESULT HandleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bool& handled);

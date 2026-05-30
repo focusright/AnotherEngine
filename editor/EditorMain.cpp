@@ -108,7 +108,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In
     g_editorCamera.SetLens(DirectX::XM_PIDIV4, 0.1f, 1000.0f);
     g_engine.SetGraphicsDevice(&g_gfx);
     g_engine.SetRenderObjects(g_commandAllocator.Get(), g_commandList.Get(), g_rootSignature.Get(), g_pipelineState.Get(), g_pipelineStateLine.Get(), g_pipelineStateLineOccluded.Get(), g_pipelineStateGizmo.Get(), g_pipelineStateGizmoOccluded.Get(), g_fence.Get(), g_fenceEvent, &g_fenceValue, g_vertexBuffer.Get(), g_vertexBufferGrid.Get(), g_gridVertexCount, WINDOW_WIDTH, WINDOW_HEIGHT);
-    g_engine.SetMeshDrawVertexCount(g_renderMesh.drawVertexCount);
+    g_engine.UpdateVertexBuffer(&g_editMesh, &g_renderMesh, g_hwnd);
     g_engine.SetObjectCount(2);
     g_app.SetWindow(g_hwnd);
     g_app.SetEngine(&g_engine);
@@ -452,13 +452,18 @@ void CreateVertexBuffer() {
     // Create editable tetrahedron, then build GPU draw vertices from editable topology.
     const float s = 0.8f;
     g_editMesh.BuildTetrahedron(s);
-    g_renderMesh.BuildFromEditable(g_editMesh);
 
-    const UINT vertexBufferSize = sizeof(g_renderMesh.drawVertices);
+    if (!g_renderMesh.BuildFromEditable(g_editMesh)) {
+        MessageBox(g_hwnd, L"BuildFromEditable failed.", L"Error", MB_OK);
+        return;
+    }
+
+    const UINT vertexBufferSize = sizeof(Vertex) * RenderMesh::kMaxDrawVertexCount;
 
     CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
-    g_device->CreateCommittedResource(
+
+    HRESULT hr = g_device->CreateCommittedResource(
         &heapProps,
         D3D12_HEAP_FLAG_NONE,
         &resourceDesc,
@@ -467,11 +472,22 @@ void CreateVertexBuffer() {
         IID_PPV_ARGS(&g_vertexBuffer)
     );
 
-    // initial upload
+    if (FAILED(hr) || !g_vertexBuffer) {
+        MessageBox(g_hwnd, L"Create vertex buffer failed.", L"Error", MB_OK);
+        return;
+    }
+
+    // Initial upload. Copy the full bounded buffer so unused slots are initialized too.
     UINT8* pVertexDataBegin = nullptr;
     D3D12_RANGE readRange = { 0, 0 };
-    g_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
-    memcpy(pVertexDataBegin, g_renderMesh.drawVertices, sizeof(Vertex) * g_renderMesh.drawVertexCount);
+
+    hr = g_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
+    if (FAILED(hr) || !pVertexDataBegin) {
+        MessageBox(g_hwnd, L"Map vertex buffer failed.", L"Error", MB_OK);
+        return;
+    }
+
+    memcpy(pVertexDataBegin, g_renderMesh.drawVertices, vertexBufferSize);
     g_vertexBuffer->Unmap(0, nullptr);
 
     g_renderMesh.dirty = false;

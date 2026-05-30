@@ -25,4 +25,4 @@ The second v0.0.3 step keeps the visible tetrahedron the same but changes the me
 Topology editing needs room to grow and shrink the mesh. This step gives AE bounded mesh capacity and active counts before adding operations such as extrude, delete face, and face split.
 
 ## Next Planned Step
-v0.0.3 Task 3 - add triangle/face picking as a modeling selection primitive.
+v0.0.3 Task 3 - add read-only triangle/face picking and active face selection as the next modeling selection primitive. Do not add extrusion yet.

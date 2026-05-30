@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <windows.h>
 #include <DirectXMath.h>
-#include "third_party/d3dx12.h"
 
 #pragma warning(push)
 #pragma warning(disable : 6001)
@@ -30,7 +29,6 @@ public:
     void RenderFrame();
 
     void SetViewProj(const DirectX::XMFLOAT4X4& viewProj);
-    void SetMeshDrawVertexCount(uint32_t count) { m_meshDrawVertexCount = count; }
 
     // Simple scene support (multiple objects drawn with different world transforms).
     void SetObjectCount(uint32_t count);

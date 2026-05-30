@@ -14,6 +14,19 @@
 
 struct EditableMesh;
 
+struct ObjectTransform {
+    DirectX::XMFLOAT3 pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    DirectX::XMFLOAT3 rot = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    DirectX::XMFLOAT3 scale = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+};
+
+struct SceneObject {
+    ObjectTransform transform;
+    EditableMesh editMesh;
+    RenderMesh renderMesh;
+    DirectX::XMFLOAT4 color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+};
+
 class App : public IHostApp {
 public:
     App(EditorCamera& camera);
@@ -102,6 +115,7 @@ private:
     static const uint32_t kMaxObjects = 16;
     uint32_t m_objectCount = 2;
     uint32_t m_activeObject = 0;
+    SceneObject m_objects[kMaxObjects] = {};
     DirectX::XMFLOAT3 m_objectPos[kMaxObjects] = {};
     DirectX::XMFLOAT3 m_objectRot[kMaxObjects] = {};   // Euler radians (pitch,yaw,roll) for now
     DirectX::XMFLOAT3 m_objectScale[kMaxObjects] = {};

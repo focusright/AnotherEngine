@@ -10,9 +10,8 @@
 #include "editor/EditorContext.h"
 #include "editor/EditorCommands.h"
 #include "editor/Gizmo.h"
+#include "editor/modes/modeling/EditableMesh.h"
 #include "editor/modes/modeling/RenderMesh.h"
-
-struct EditableMesh;
 
 struct ObjectTransform {
     DirectX::XMFLOAT3 pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);

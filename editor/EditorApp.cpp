@@ -67,15 +67,33 @@ App::App(EditorCamera& camera) : m_camera(camera) {
 
 
     // Initialize per-object transform components.
-for (uint32_t i = 0; i < kMaxObjects; ++i) {
-    m_objectRot[i] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-    m_objectScale[i] = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-    m_objectColor[i] = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-}
+    for (uint32_t i = 0; i < kMaxObjects; ++i) {
+        m_objectRot[i] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+        m_objectScale[i] = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+        m_objectColor[i] = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    }
 
-m_objectCount = 2;
+    m_objectCount = 2;
     m_objectPos[0] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_objectPos[1] = DirectX::XMFLOAT3(2.0f, 0.0f, 0.0f);
+
+    for (uint32_t i = 0; i < kMaxObjects; ++i) {
+        m_objects[i].transform.pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+        m_objects[i].transform.rot = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+        m_objects[i].transform.scale = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+        m_objects[i].color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        m_objects[i].editMesh.Clear();
+        m_objects[i].renderMesh.Clear();
+    }
+
+    for(uint32_t i=0; i<m_objectCount; ++i) {
+        m_objects[i].transform.pos = m_objectPos[i];
+        m_objects[i].transform.rot = m_objectRot[i];
+        m_objects[i].transform.scale = m_objectScale[i];
+        m_objects[i].color = m_objectColor[i];
+        m_objects[i].editMesh.BuildTetrahedron(1.0f);
+        m_objects[i].renderMesh.BuildFromEditable(m_objects[i].editMesh);
+    }
 }
 
 void App::BeginFrame() {
@@ -900,10 +918,16 @@ bool App::AddObject(const DirectX::XMFLOAT3& pos) {
     if (m_objectCount >= kMaxObjects)
         return false;
 
-    m_objectPos[m_objectCount] = pos;
-    m_objectRot[m_objectCount] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-    m_objectScale[m_objectCount] = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-    m_objectColor[m_objectCount] = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    //m_objectPos[m_objectCount] = pos;
+    //m_objectRot[m_objectCount] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    //m_objectScale[m_objectCount] = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    //m_objectColor[m_objectCount] = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+
+    m_objects[m_objectCount].transform.pos = pos;
+    m_objects[m_objectCount].transform.rot = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    m_objects[m_objectCount].transform.scale = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    m_objects[m_objectCount].color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+
     m_objectCount++;
     m_activeObject = m_objectCount - 1;
     return true;

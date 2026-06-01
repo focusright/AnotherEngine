@@ -77,14 +77,7 @@ App::App(EditorCamera& camera) : m_camera(camera) {
     m_objectPos[0] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
     m_objectPos[1] = DirectX::XMFLOAT3(2.0f, 0.0f, 0.0f);
 
-    for (uint32_t i = 0; i < kMaxObjects; ++i) {
-        m_objects[i].transform.pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-        m_objects[i].transform.rot = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-        m_objects[i].transform.scale = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-        m_objects[i].color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-        m_objects[i].editMesh.Clear();
-        m_objects[i].renderMesh.Clear();
-    }
+    ResetAllObjects();
 
     for(uint32_t i=0; i<m_objectCount; ++i) {
         m_objects[i].transform.pos = m_objectPos[i];
@@ -851,6 +844,8 @@ bool App::LoadSceneAem(const wchar_t* path) {
     m_objectCount = (uint32_t)n;
     m_activeObject = (active < m_objectCount) ? (uint32_t)active : 0;
 
+    ResetAllObjects();
+
     for (uint32_t i = 0; i < m_objectCount; ++i) {
         char objKey[16] = {};
         char prim[16] = {};
@@ -864,6 +859,13 @@ bool App::LoadSceneAem(const wchar_t* path) {
             &m_objectScale[i].x, &m_objectScale[i].y, &m_objectScale[i].z,
             &m_objectColor[i].x, &m_objectColor[i].y, &m_objectColor[i].z, &m_objectColor[i].w
         ) != 13) { std::fclose(f); return false; }
+
+        m_objects[i].transform.pos = m_objectPos[i];
+        m_objects[i].transform.rot = m_objectRot[i];
+        m_objects[i].transform.scale = m_objectScale[i];
+        m_objects[i].color = m_objectColor[i];
+        m_objects[i].editMesh.BuildTetrahedron(1.0f);
+        m_objects[i].renderMesh.BuildFromEditable(m_objects[i].editMesh);
     }
 
     std::fclose(f);
@@ -995,6 +997,18 @@ bool App::DeleteActiveObject() {
         m_activeObject = m_objectCount - 1;
 
     return true;
+}
+
+void App::ResetAllObjects() {
+    for (uint32_t i = 0; i < kMaxObjects; ++i) {
+        SceneObject& object = m_objects[i];
+        object.transform.pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+        object.transform.rot = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+        object.transform.scale = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+        object.color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        object.editMesh.Clear();
+        object.renderMesh.Clear();
+    }
 }
 
 bool App::ExecuteCommand(EditorCommandType type) {

@@ -50,6 +50,7 @@ public:
     bool AddObject(const DirectX::XMFLOAT3& pos);
     bool DuplicateActiveObject();
     bool DeleteActiveObject();
+    void ResetAllObjects();
 
     bool SaveSceneAem(const wchar_t* path);
     bool LoadSceneAem(const wchar_t* path);

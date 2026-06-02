@@ -895,6 +895,12 @@ bool App::SetActiveObjectTransform(const DirectX::XMFLOAT3& pos, const DirectX::
     m_objectPos[m_activeObject] = pos;
     m_objectRot[m_activeObject] = rot;
     m_objectScale[m_activeObject] = safeScale;
+
+    SceneObject& object = m_objects[m_activeObject];
+    object.transform.pos = pos;
+    object.transform.rot = rot;
+    object.transform.scale = safeScale;
+    
     return true;
 }
 
@@ -946,12 +952,6 @@ bool App::DuplicateActiveObject() {
     DirectX::XMFLOAT3 r = m_objectRot[m_activeObject];
     DirectX::XMFLOAT3 s = m_objectScale[m_activeObject];
     DirectX::XMFLOAT4 c = m_objectColor[m_activeObject];
-
-    //SceneObject& activeObject = m_objects[m_activeObject];
-    //DirectX::XMFLOAT3 p = activeObject.transform.pos;
-    //DirectX::XMFLOAT3 r = activeObject.transform.rot;
-    //DirectX::XMFLOAT3 s = activeObject.transform.scale;
-    //DirectX::XMFLOAT4 c = activeObject.color;
 
     p.x += 0.5f; // small offset so it’s visible
     if (!AddObject(p)) return false;

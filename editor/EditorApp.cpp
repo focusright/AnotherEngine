@@ -265,6 +265,8 @@ void App::Update(const HostFrame& frame) {
             float step = 2.0f * dt;
             m_objectPos[m_activeObject].x += dx * step;
             m_objectPos[m_activeObject].y += dy * step;
+
+            m_objects[m_activeObject].transform.pos = m_objectPos[m_activeObject];
         }
     }
 
@@ -340,14 +342,15 @@ void App::Update(const HostFrame& frame) {
     m_engine->SetObjectCount(renderCount);
 
     for (uint32_t i = 0; i < m_objectCount; ++i) {
-        XMMATRIX S = XMMatrixScaling(m_objectScale[i].x, m_objectScale[i].y, m_objectScale[i].z);
-        XMMATRIX R = XMMatrixRotationRollPitchYaw(m_objectRot[i].x, m_objectRot[i].y, m_objectRot[i].z);
-        XMMATRIX T = XMMatrixTranslation(m_objectPos[i].x, m_objectPos[i].y, m_objectPos[i].z);
+        const SceneObject& object = m_objects[i];
+        XMMATRIX S = XMMatrixScaling(object.transform.scale.x, object.transform.scale.y, object.transform.scale.z);
+        XMMATRIX R = XMMatrixRotationRollPitchYaw(object.transform.rot.x, object.transform.rot.y, object.transform.rot.z);
+        XMMATRIX T = XMMatrixTranslation(object.transform.pos.x, object.transform.pos.y, object.transform.pos.z);        
         XMMATRIX W = S * R * T; //W = World matrix for this object
         XMFLOAT4X4 world;
         XMStoreFloat4x4(&world, W);
         m_engine->SetObjectWorld(i, world);
-        m_engine->SetObjectTint(i, m_objectColor[i]);
+        m_engine->SetObjectTint(i, object.color);
     }
 
     if (pivotIndex != 0xFFFFFFFFu) {
@@ -364,6 +367,13 @@ void App::Update(const HostFrame& frame) {
     
     GizmoUpdateArgs gizmoArgs = BuildGizmoUpdateArgs(renderMeshDirty);
     m_gizmo.Update(gizmoArgs);
+
+    if (m_activeObject < m_objectCount) {
+        SceneObject& object = m_objects[m_activeObject];
+        object.transform.pos = m_objectPos[m_activeObject];
+        object.transform.rot = m_objectRot[m_activeObject];
+        object.transform.scale = m_objectScale[m_activeObject];
+    }
 
     if (renderMeshDirty)
         m_renderMesh->dirty = true;

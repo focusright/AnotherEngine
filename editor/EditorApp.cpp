@@ -886,9 +886,12 @@ bool App::GetActiveObjectTransform(DirectX::XMFLOAT3& pos, DirectX::XMFLOAT3& ro
     if (m_activeObject >= m_objectCount)
         return false;
 
-    pos = m_objectPos[m_activeObject];
-    rot = m_objectRot[m_activeObject];
-    scale = m_objectScale[m_activeObject];
+    const SceneObject& object = m_objects[m_activeObject];
+
+    pos = object.transform.pos;
+    rot = object.transform.rot;
+    scale = object.transform.scale;
+
     return true;
 }
 

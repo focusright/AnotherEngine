@@ -818,11 +818,12 @@ bool App::SaveSceneAem(const wchar_t* path) {
     std::fprintf(f, "active %u\n", (unsigned)m_activeObject);
 
     for (uint32_t i = 0; i < m_objectCount; ++i) {
+        const SceneObject& object = m_objects[i];
         std::fprintf(f, "obj tetra %.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g\n",
-            m_objectPos[i].x, m_objectPos[i].y, m_objectPos[i].z,
-            m_objectRot[i].x, m_objectRot[i].y, m_objectRot[i].z,
-            m_objectScale[i].x, m_objectScale[i].y, m_objectScale[i].z,
-            m_objectColor[i].x, m_objectColor[i].y, m_objectColor[i].z, m_objectColor[i].w
+            object.transform.pos.x, object.transform.pos.y, object.transform.pos.z,
+            object.transform.rot.x, object.transform.rot.y, object.transform.rot.z,
+            object.transform.scale.x, object.transform.scale.y, object.transform.scale.z,
+            object.color.x, object.color.y, object.color.z, object.color.w
         );
     }
 

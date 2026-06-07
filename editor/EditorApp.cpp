@@ -865,19 +865,22 @@ bool App::LoadSceneAem(const wchar_t* path) {
         if (std::strcmp(objKey, "obj") != 0) { std::fclose(f); return false; }
         if (std::strcmp(prim, "tetra") != 0) { std::fclose(f); return false; }
 
+        SceneObject& object = m_objects[i];
+
         if (std::fscanf(f, "%f %f %f %f %f %f %f %f %f %f %f %f %f",
-            &m_objectPos[i].x, &m_objectPos[i].y, &m_objectPos[i].z,
-            &m_objectRot[i].x, &m_objectRot[i].y, &m_objectRot[i].z,
-            &m_objectScale[i].x, &m_objectScale[i].y, &m_objectScale[i].z,
-            &m_objectColor[i].x, &m_objectColor[i].y, &m_objectColor[i].z, &m_objectColor[i].w
+            &object.transform.pos.x, &object.transform.pos.y, &object.transform.pos.z,
+            &object.transform.rot.x, &object.transform.rot.y, &object.transform.rot.z,
+            &object.transform.scale.x, &object.transform.scale.y, &object.transform.scale.z,
+            &object.color.x, &object.color.y, &object.color.z, &object.color.w
         ) != 13) { std::fclose(f); return false; }
 
-        m_objects[i].transform.pos = m_objectPos[i];
-        m_objects[i].transform.rot = m_objectRot[i];
-        m_objects[i].transform.scale = m_objectScale[i];
-        m_objects[i].color = m_objectColor[i];
-        m_objects[i].editMesh.BuildTetrahedron(1.0f);
-        m_objects[i].renderMesh.BuildFromEditable(m_objects[i].editMesh);
+        object.editMesh.BuildTetrahedron(1.0f);
+        object.renderMesh.BuildFromEditable(m_objects[i].editMesh);
+
+        m_objectPos[i] = object.transform.pos;
+        m_objectRot[i] = object.transform.rot;
+        m_objectScale[i] = object.transform.scale;
+        m_objectColor[i] = object.color;
     }
 
     std::fclose(f);

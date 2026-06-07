@@ -780,9 +780,9 @@ void App::FocusCamera() {
     if (m_activeObject >= m_objectCount)
         return;
 
-    DirectX::XMFLOAT3 center = m_objectPos[m_activeObject];
-
-    DirectX::XMFLOAT3 scale = m_objectScale[m_activeObject];
+    const SceneObject& object = m_objects[m_activeObject];
+    DirectX::XMFLOAT3 center = object.transform.pos;
+    DirectX::XMFLOAT3 scale = object.transform.scale;
     float maxScale = (std::max)(scale.x, (std::max)(scale.y, scale.z));
 
     float baseRadius = 0.75f;

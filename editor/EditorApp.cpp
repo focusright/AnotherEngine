@@ -915,9 +915,9 @@ bool App::SetActiveObjectTransform(const DirectX::XMFLOAT3& pos, const DirectX::
     object.transform.rot = rot;
     object.transform.scale = safeScale;
 
-    m_objectPos[m_activeObject] = pos;
-    m_objectRot[m_activeObject] = rot;
-    m_objectScale[m_activeObject] = safeScale;
+    m_objectPos[m_activeObject] = object.transform.pos;
+    m_objectRot[m_activeObject] = object.transform.rot;
+    m_objectScale[m_activeObject] = object.transform.scale;
     
     return true;
 }

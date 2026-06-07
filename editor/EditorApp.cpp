@@ -1020,6 +1020,11 @@ bool App::DeleteActiveObject() {
     if (m_activeObject >= m_objectCount)
         m_activeObject = m_objectCount - 1;
 
+    m_objectPos[m_objectCount] = duplicate.transform.pos;
+    m_objectRot[m_objectCount] = duplicate.transform.rot;
+    m_objectScale[m_objectCount] = duplicate.transform.scale;
+    m_objectColor[m_objectCount] = duplicate.color;
+
     return true;
 }
 

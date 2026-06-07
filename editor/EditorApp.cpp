@@ -1206,4 +1206,26 @@ void App::DrawSceneWindow() {
     }
 
     ImGui::End();
+
+    ImGui::SetNextWindowPos(ImVec2(10, 320), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(260, 80), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Color");
+
+    if (m_activeObject < m_objectCount) {
+        SceneObject& object = m_objects[m_activeObject];
+
+        float color[4] = {
+            object.color.x,
+            object.color.y,
+            object.color.z,
+            object.color.w
+        };
+
+        if (ImGui::ColorEdit4("Color", color)) {
+            object.color = DirectX::XMFLOAT4(color[0], color[1], color[2], color[3]);
+            m_objectColor[m_activeObject] = object.color;
+        }
+    }
+
+    ImGui::End();
 }

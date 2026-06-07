@@ -999,12 +999,12 @@ bool App::DeleteActiveObject() {
         return false;
 
     for (uint32_t i = m_activeObject + 1; i < m_objectCount; ++i) {
-        m_objectPos[i - 1] = m_objectPos[i]; //overwrite activeObject with the next item in array
-        m_objectRot[i - 1] = m_objectRot[i];
-        m_objectScale[i - 1] = m_objectScale[i];
-        m_objectColor[i - 1] = m_objectColor[i];
-
         m_objects[i - 1] = m_objects[i];
+        const SceneObject& object = m_objects[i - 1]; //overwrite activeObject with the next item in array
+        m_objectPos[i - 1] = object.transform.pos;
+        m_objectRot[i - 1] = object.transform.rot;
+        m_objectScale[i - 1] = object.transform.scale;
+        m_objectColor[i - 1] = object.color;
     }
 
     m_objectCount--;

@@ -76,11 +76,6 @@ App::App(EditorCamera& camera) : m_camera(camera) {
 
         object.editMesh.BuildTetrahedron(1.0f);
         object.renderMesh.BuildFromEditable(object.editMesh);
-
-        m_objectPos[i] = object.transform.pos;
-        m_objectRot[i] = object.transform.rot;
-        m_objectScale[i] = object.transform.scale;
-        m_objectColor[i] = object.color;
     }
 }
 
@@ -260,7 +255,6 @@ void App::Update(const HostFrame& frame) {
             SceneObject& object = m_objects[m_activeObject];
             object.transform.pos.x  += dx * step;
             object.transform.pos.y  += dy * step;
-            m_objectPos[m_activeObject] = object.transform.pos;
         }
     }
 
@@ -361,13 +355,6 @@ void App::Update(const HostFrame& frame) {
     
     GizmoUpdateArgs gizmoArgs = BuildGizmoUpdateArgs(renderMeshDirty);
     m_gizmo.Update(gizmoArgs);
-
-    if (m_activeObject < m_objectCount) {
-        const SceneObject& object = m_objects[m_activeObject];
-        m_objectPos[m_activeObject] = object.transform.pos;
-        m_objectRot[m_activeObject] = object.transform.rot;
-        m_objectScale[m_activeObject] = object.transform.scale;
-    }
 
     if (renderMeshDirty)
         m_renderMesh->dirty = true;
@@ -876,11 +863,6 @@ bool App::LoadSceneAem(const wchar_t* path) {
 
         object.editMesh.BuildTetrahedron(1.0f);
         object.renderMesh.BuildFromEditable(m_objects[i].editMesh);
-
-        m_objectPos[i] = object.transform.pos;
-        m_objectRot[i] = object.transform.rot;
-        m_objectScale[i] = object.transform.scale;
-        m_objectColor[i] = object.color;
     }
 
     std::fclose(f);
@@ -914,10 +896,6 @@ bool App::SetActiveObjectTransform(const DirectX::XMFLOAT3& pos, const DirectX::
     object.transform.pos = pos;
     object.transform.rot = rot;
     object.transform.scale = safeScale;
-
-    m_objectPos[m_activeObject] = object.transform.pos;
-    m_objectRot[m_activeObject] = object.transform.rot;
-    m_objectScale[m_activeObject] = object.transform.scale;
     
     return true;
 }
@@ -953,11 +931,6 @@ bool App::AddObject(const DirectX::XMFLOAT3& pos) {
     object.editMesh.BuildTetrahedron(1.0f);
     object.renderMesh.BuildFromEditable(object.editMesh);
 
-    m_objectPos[m_objectCount] = object.transform.pos;
-    m_objectRot[m_objectCount] = object.transform.rot;
-    m_objectScale[m_objectCount] = object.transform.scale;
-    m_objectColor[m_objectCount] = object.color;
-
     m_objectCount++;
     m_activeObject = m_objectCount - 1;
     return true;
@@ -982,10 +955,6 @@ bool App::DuplicateActiveObject() {
     duplicate.transform.scale = s;
     duplicate.color = c;
 
-    m_objectRot[m_activeObject] = duplicate.transform.rot;
-    m_objectScale[m_activeObject] = duplicate.transform.scale;
-    m_objectColor[m_activeObject] = duplicate.color;
-
     return true;
 }
 
@@ -999,10 +968,6 @@ bool App::DeleteActiveObject() {
     for (uint32_t i = m_activeObject + 1; i < m_objectCount; ++i) {
         m_objects[i - 1] = m_objects[i];
         const SceneObject& object = m_objects[i - 1]; //overwrite activeObject with the next item in array
-        m_objectPos[i - 1] = object.transform.pos;
-        m_objectRot[i - 1] = object.transform.rot;
-        m_objectScale[i - 1] = object.transform.scale;
-        m_objectColor[i - 1] = object.color;
     }
 
     m_objectCount--;
@@ -1018,11 +983,6 @@ bool App::DeleteActiveObject() {
     if (m_activeObject >= m_objectCount)
         m_activeObject = m_objectCount - 1;
 
-    m_objectPos[m_objectCount] = duplicate.transform.pos;
-    m_objectRot[m_objectCount] = duplicate.transform.rot;
-    m_objectScale[m_objectCount] = duplicate.transform.scale;
-    m_objectColor[m_objectCount] = duplicate.color;
-
     return true;
 }
 
@@ -1035,11 +995,6 @@ void App::ResetAllObjects() {
         object.color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
         object.editMesh.Clear();
         object.renderMesh.Clear();
-
-        m_objectPos[i] = object.transform.pos;
-        m_objectRot[i] = object.transform.rot;
-        m_objectScale[i] = object.transform.scale;
-        m_objectColor[i] = object.color;
     }
 }
 
@@ -1235,7 +1190,6 @@ void App::DrawSceneWindow() {
 
         if (ImGui::ColorEdit4("Color", color)) {
             object.color = DirectX::XMFLOAT4(color[0], color[1], color[2], color[3]);
-            m_objectColor[m_activeObject] = object.color;
         }
     }
 

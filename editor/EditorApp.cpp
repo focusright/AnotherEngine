@@ -686,20 +686,22 @@ DirectX::XMFLOAT3 App::LocalVertexToWorld(const DirectX::XMFLOAT3& p) const {
 DirectX::XMFLOAT3 App::WorldPointToLocal(const DirectX::XMFLOAT3& p) const {
     if (m_activeObject >= m_objectCount) return p;
 
+    const SceneObject& object = m_objects[m_activeObject];
+
     DirectX::XMMATRIX S = DirectX::XMMatrixScaling(
-        m_objectScale[m_activeObject].x,
-        m_objectScale[m_activeObject].y,
-        m_objectScale[m_activeObject].z
+        object.transform.scale.x,
+        object.transform.scale.y,
+        object.transform.scale.z
     );
     DirectX::XMMATRIX R = DirectX::XMMatrixRotationRollPitchYaw(
-        m_objectRot[m_activeObject].x,
-        m_objectRot[m_activeObject].y,
-        m_objectRot[m_activeObject].z
+        object.transform.rot.x,
+        object.transform.rot.y,
+        object.transform.rot.z
     );
     DirectX::XMMATRIX T = DirectX::XMMatrixTranslation(
-        m_objectPos[m_activeObject].x,
-        m_objectPos[m_activeObject].y,
-        m_objectPos[m_activeObject].z
+        object.transform.pos.x,
+        object.transform.pos.y,
+        object.transform.pos.z
     );
 
     DirectX::XMMATRIX W = S * R * T;

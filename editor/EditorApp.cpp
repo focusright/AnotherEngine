@@ -608,7 +608,7 @@ int App::HitTestObject(int mouseX, int mouseY) const {
         //dist < 0 means the ray origin is inside the sphere
         float dist = offsetLenSq - radius * radius;
 
-        if (dist > 0.0f && proj > 0.0f) continue; //the ray starts outside the sphere or the ray points away from the sphere, so a hit is impossible
+        if (dist > 0.0f && proj > 0.0f) continue; // The ray starts outside the sphere and points away from it, so a hit is impossible.
 
         //ax² + bx + c = 0, x = -b ± sqrt(b² - 4ac) / 2a, discriminant = b² - 4ac
 

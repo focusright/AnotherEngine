@@ -794,10 +794,10 @@ void App::FocusCamera() {
 
 bool App::SaveSceneAem(const wchar_t* path) {
     // File format:
-    //   AE_MODEL 1
-    //   objects N
-    //   active I
-    //   obj tetra px py pz rx ry rz sx sy sz cr cg cb ca
+    //   AE_MODEL 1                                          //px py pz = object position x/y/z
+    //   objects N                                           //rx ry rz = object rotation x/y/z
+    //   active I                                            //sx sy sz = object scale x/y/z
+    //   obj tetra px py pz rx ry rz sx sy sz cr cg cb ca    //cr cg cb ca = object color red/green/blue/alpha
     FILE* f = nullptr;
     if (_wfopen_s(&f, path, L"wb") != 0 || !f) return false;
 

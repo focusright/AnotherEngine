@@ -912,14 +912,14 @@ bool App::SetActiveObjectTransform(const DirectX::XMFLOAT3& pos, const DirectX::
     if (fabsf(safeScale.y) < minScale) safeScale.y = (safeScale.y < 0.0f) ? -minScale : minScale;
     if (fabsf(safeScale.z) < minScale) safeScale.z = (safeScale.z < 0.0f) ? -minScale : minScale;
 
-    m_objectPos[m_activeObject] = pos;
-    m_objectRot[m_activeObject] = rot;
-    m_objectScale[m_activeObject] = safeScale;
-
     SceneObject& object = m_objects[m_activeObject];
     object.transform.pos = pos;
     object.transform.rot = rot;
     object.transform.scale = safeScale;
+
+    m_objectPos[m_activeObject] = pos;
+    m_objectRot[m_activeObject] = rot;
+    m_objectScale[m_activeObject] = safeScale;
     
     return true;
 }

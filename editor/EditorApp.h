@@ -116,6 +116,10 @@ private:
     uint32_t m_objectCount = 2;
     uint32_t m_activeObject = 0;
     SceneObject m_objects[kMaxObjects] = {};
+
+    // Compatibility mirrors during the SceneObject migration.
+    // New editor code should prefer m_objects[].transform and m_objects[].color.
+    // Keep these synchronized until the old paths are removed.
     DirectX::XMFLOAT3 m_objectPos[kMaxObjects] = {};
     DirectX::XMFLOAT3 m_objectRot[kMaxObjects] = {};   // Euler radians (pitch,yaw,roll) for now
     DirectX::XMFLOAT3 m_objectScale[kMaxObjects] = {};

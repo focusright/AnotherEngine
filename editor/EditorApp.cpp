@@ -1037,6 +1037,11 @@ void App::ResetAllObjects() {
         object.color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
         object.editMesh.Clear();
         object.renderMesh.Clear();
+
+        m_objectPos[i] = object.transform.pos;
+        m_objectRot[i] = object.transform.rot;
+        m_objectScale[i] = object.transform.scale;
+        m_objectColor[i] = object.color;
     }
 }
 

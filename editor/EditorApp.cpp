@@ -570,9 +570,11 @@ int App::HitTestObject(int mouseX, int mouseY) const {
     int bestIndex = -1;
 
     for (uint32_t index = 0; index < m_objectCount; ++index) {
-        DirectX::XMFLOAT3 center = m_objectPos[index];
+        const SceneObject& object = m_objects[index];
 
-        float scale = (std::max)(m_objectScale[index].x, (std::max)(m_objectScale[index].y, m_objectScale[index].z));
+        DirectX::XMFLOAT3 center = object.transform.pos;
+        DirectX::XMFLOAT3 objScale = object.transform.scale;
+        float scale = (std::max)(objScale.x, (std::max)(objScale.y, objScale.z));
         float radius = 1.0f * scale;
 
         DirectX::XMVECTOR sphereCenter = DirectX::XMLoadFloat3(&center); //Also object center in world space

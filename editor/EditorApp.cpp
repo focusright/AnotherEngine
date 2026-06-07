@@ -946,18 +946,19 @@ bool App::AddObject(const DirectX::XMFLOAT3& pos) {
     if (m_objectCount >= kMaxObjects)
         return false;
 
-    m_objectPos[m_objectCount] = pos;
-    m_objectRot[m_objectCount] = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-    m_objectScale[m_objectCount] = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-    m_objectColor[m_objectCount] = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    SceneObject& object = m_objects[m_objectCount];
 
-    SceneObject& addedObject = m_objects[m_objectCount];
-    addedObject.transform.pos = m_objectPos[m_objectCount];
-    addedObject.transform.rot = m_objectRot[m_objectCount];
-    addedObject.transform.scale = m_objectScale[m_objectCount];
-    addedObject.color = m_objectColor[m_objectCount];
-    addedObject.editMesh.BuildTetrahedron(1.0f);
-    addedObject.renderMesh.BuildFromEditable(addedObject.editMesh);
+    object.transform.pos = pos;
+    object.transform.rot = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    object.transform.scale = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    object.color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    object.editMesh.BuildTetrahedron(1.0f);
+    object.renderMesh.BuildFromEditable(object.editMesh);
+
+    m_objectPos[m_objectCount] = object.transform.pos;
+    m_objectRot[m_objectCount] = object.transform.rot;
+    m_objectScale[m_objectCount] = object.transform.scale;
+    m_objectColor[m_objectCount] = object.color;
 
     m_objectCount++;
     m_activeObject = m_objectCount - 1;

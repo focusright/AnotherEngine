@@ -862,7 +862,7 @@ bool App::LoadSceneAem(const wchar_t* path) {
         ) != 13) { std::fclose(f); return false; }
 
         object.editMesh.BuildTetrahedron(1.0f);
-        object.renderMesh.BuildFromEditable(m_objects[i].editMesh);
+        object.renderMesh.BuildFromEditable(object.editMesh);
     }
 
     std::fclose(f);

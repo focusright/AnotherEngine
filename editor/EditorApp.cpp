@@ -968,22 +968,25 @@ bool App::DuplicateActiveObject() {
     if (m_activeObject >= m_objectCount)
         return false;
 
-    DirectX::XMFLOAT3 p = m_objectPos[m_activeObject];
-    DirectX::XMFLOAT3 r = m_objectRot[m_activeObject];
-    DirectX::XMFLOAT3 s = m_objectScale[m_activeObject];
-    DirectX::XMFLOAT4 c = m_objectColor[m_activeObject];
+    const SceneObject& source = m_objects[m_activeObject];
+
+    DirectX::XMFLOAT3 p = source.transform.pos;
+    DirectX::XMFLOAT3 r = source.transform.rot;
+    DirectX::XMFLOAT3 s = source.transform.scale;
+    DirectX::XMFLOAT4 c = source.color;
 
     p.x += 0.5f; // small offset so it’s visible
     if (!AddObject(p)) return false;
 
-    m_objectRot[m_activeObject] = r;
-    m_objectScale[m_activeObject] = s;
-    m_objectColor[m_activeObject] = c;
+    SceneObject& duplicate = m_objects[m_activeObject];
+    duplicate.transform.rot = r;
+    duplicate.transform.scale = s;
+    duplicate.color = c;
 
-    SceneObject& duplicateObject = m_objects[m_activeObject];
-    duplicateObject.transform.rot = r;
-    duplicateObject.transform.scale = s;
-    duplicateObject.color = c;
+    m_objectRot[m_activeObject] = duplicate.transform.rot;
+    m_objectScale[m_activeObject] = duplicate.transform.scale;
+    m_objectColor[m_activeObject] = duplicate.color;
+
     return true;
 }
 

@@ -783,14 +783,14 @@ void App::FocusCamera() {
     const SceneObject& object = m_objects[m_activeObject];
     DirectX::XMFLOAT3 center = object.transform.pos;
     DirectX::XMFLOAT3 scale = object.transform.scale;
-    float maxScale = (std::max)(scale.x, (std::max)(scale.y, scale.z));
+    float maxScale = (std::max)(scale.x, (std::max)(scale.y, scale.z)); //Take the largest scale axis. The (std::max) style is intentional. It avoids problems if Windows headers define a max macro.
 
-    float baseRadius = 0.75f;
+    float baseRadius = 0.75f; //computes a rough bounding radius
     float radius = baseRadius * maxScale;
-    radius = (std::max)(radius, 0.5f);
+    radius = (std::max)(radius, 0.5f); //So an object with scale 1 gets radius 0.75. If the object is tiny, the radius is clamped to at least 0.5, so the camera does not get too close.
 
-    float dist = radius / std::tan(m_camera.FovY() * 0.5f);
-    dist = (std::max)(dist, 1.0f);
+    float dist = radius / std::tan(m_camera.FovY() * 0.5f); //computes how far the camera should be from the object based on vertical FOV
+    dist = (std::max)(dist, 1.0f);                          //distance = radius / tan(fov / 2)
 
     DirectX::XMFLOAT3 forward = m_camera.Forward();
 

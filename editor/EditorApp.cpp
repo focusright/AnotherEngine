@@ -140,7 +140,6 @@ void App::Update(const HostFrame& frame) {
                 pos.z + fwd.z * m_orbitDistance
             );
         }
-
     }
     if (m_input.rmbDown && !m_isDragging) {
         int dx = m_input.mouseX - m_lastCameraMouse.x;
@@ -263,10 +262,10 @@ void App::Update(const HostFrame& frame) {
 
         if ((dx != 0.0f || dy != 0.0f) && (m_activeObject < m_objectCount)) {
             float step = 2.0f * dt;
-            m_objectPos[m_activeObject].x += dx * step;
-            m_objectPos[m_activeObject].y += dy * step;
-
-            m_objects[m_activeObject].transform.pos = m_objectPos[m_activeObject];
+            SceneObject& object = m_objects[m_activeObject];
+            object.transform.pos.x  += dx * step;
+            object.transform.pos.y  += dy * step;
+            m_objectPos[m_activeObject] = object.transform.pos;
         }
     }
 

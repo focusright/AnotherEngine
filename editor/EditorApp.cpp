@@ -967,7 +967,6 @@ bool App::DeleteActiveObject() {
 
     for (uint32_t i = m_activeObject + 1; i < m_objectCount; ++i) {
         m_objects[i - 1] = m_objects[i];
-        const SceneObject& object = m_objects[i - 1]; //overwrite activeObject with the next item in array
     }
 
     m_objectCount--;

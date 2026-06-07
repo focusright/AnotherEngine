@@ -1005,13 +1005,13 @@ bool App::DeleteActiveObject() {
 
     m_objectCount--;
 
-    SceneObject& duplicateObject = m_objects[m_objectCount]; //Last object is a duplicate of the previous one in the array
-    duplicateObject.transform.pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-    duplicateObject.transform.rot = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-    duplicateObject.transform.scale = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-    duplicateObject.color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    duplicateObject.editMesh.Clear();
-    duplicateObject.renderMesh.Clear();
+    SceneObject& duplicate = m_objects[m_objectCount]; //Last object is a duplicate of the previous one in the array
+    duplicate.transform.pos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    duplicate.transform.rot = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    duplicate.transform.scale = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+    duplicate.color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    duplicate.editMesh.Clear();
+    duplicate.renderMesh.Clear();
 
     if (m_activeObject >= m_objectCount)
         m_activeObject = m_objectCount - 1;

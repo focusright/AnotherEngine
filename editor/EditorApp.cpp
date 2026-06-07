@@ -369,10 +369,10 @@ void App::Update(const HostFrame& frame) {
     m_gizmo.Update(gizmoArgs);
 
     if (m_activeObject < m_objectCount) {
-        SceneObject& object = m_objects[m_activeObject];
-        object.transform.pos = m_objectPos[m_activeObject];
-        object.transform.rot = m_objectRot[m_activeObject];
-        object.transform.scale = m_objectScale[m_activeObject];
+        const SceneObject& object = m_objects[m_activeObject];
+        m_objectPos[m_activeObject] = object.transform.pos;
+        m_objectRot[m_activeObject] = object.transform.rot;
+        m_objectScale[m_activeObject] = object.transform.scale;
     }
 
     if (renderMeshDirty)
@@ -745,9 +745,10 @@ GizmoTarget App::BuildGizmoTarget() {
     target.selectedVertex = m_selectedVertex;
 
     if (m_activeObject < m_objectCount) {
-        target.transform.pos = &m_objectPos[m_activeObject];
-        target.transform.rot = &m_objectRot[m_activeObject];
-        target.transform.scale = &m_objectScale[m_activeObject];
+        SceneObject& object = m_objects[m_activeObject];
+        target.transform.pos = &object.transform.pos;
+        target.transform.rot = &object.transform.rot;
+        target.transform.scale = &object.transform.scale;
     }
 
     return target;

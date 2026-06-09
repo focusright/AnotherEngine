@@ -906,6 +906,7 @@ void App::SetActiveObject(uint32_t index) {
 
     m_activeObject = index;
     m_selectedVertex = -1;
+    m_selectedTriangle = -1;
     m_isDragging = false;
     m_gizmo.Reset();
 
@@ -933,6 +934,8 @@ bool App::AddObject(const DirectX::XMFLOAT3& pos) {
 
     m_objectCount++;
     m_activeObject = m_objectCount - 1;
+    m_selectedVertex = -1;
+    m_selectedTriangle = -1;
     return true;
 }
 
@@ -981,6 +984,10 @@ bool App::DeleteActiveObject() {
 
     if (m_activeObject >= m_objectCount)
         m_activeObject = m_objectCount - 1;
+
+    m_selectedVertex = -1;
+    m_selectedTriangle = -1;
+    m_gizmo.Reset();
 
     return true;
 }
@@ -1061,7 +1068,7 @@ bool App::ExecuteCommand(const EditorCommand& command) {
 
 void App::DrawSceneWindow() {
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(260, 300), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(260, 350), ImGuiCond_FirstUseEver);
     ImGui::Begin("Scene");
 
     if (ImGui::Button("Add")) {
@@ -1120,6 +1127,8 @@ void App::DrawSceneWindow() {
     ImGui::Text("Last Command: %s", LastCommandName());
     ImGui::Text("Frame: %llu", (unsigned long long)m_frame.frameIndex);
     ImGui::Text("dt: %.4f  total: %.2f", m_frame.dt, m_frame.totalTime);
+    ImGui::Text("Selected Vertex: %d", m_selectedVertex);
+    ImGui::Text("Selected Triangle: %d", m_selectedTriangle);
     ImGui::Separator();
 
     ImGui::Text("Gizmo Mode: %s", GizmoModeName());
@@ -1173,7 +1182,7 @@ void App::DrawSceneWindow() {
 
     ImGui::End();
 
-    ImGui::SetNextWindowPos(ImVec2(10, 320), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(10, 370), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(260, 80), ImGuiCond_FirstUseEver);
     ImGui::Begin("Color");
 

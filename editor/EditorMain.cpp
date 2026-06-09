@@ -496,10 +496,9 @@ void CreateVertexBuffer() {
 void InitializeImGui() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGui::StyleColorsDark();
-
     ImGuiIO& io = ImGui::GetIO();
-    (void)io;
+    io.IniFilename = nullptr; //Suppress imgui.ini generation
+    ImGui::StyleColorsDark();
 
     ImGui_ImplWin32_Init(g_hwnd);
 

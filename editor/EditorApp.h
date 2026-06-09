@@ -97,6 +97,7 @@ private:
 
     bool m_isDragging = false; //dragging a gizmo
     int m_selectedVertex = -1;
+    int m_selectedTriangle = -1;
     HWND m_hwnd = nullptr;
 
     bool m_colorsInit = false;

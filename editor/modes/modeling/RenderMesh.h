@@ -16,8 +16,9 @@ struct RenderMesh {
     bool dirty = true;
     uint32_t drawVertexCount = 0;
 
-    // Each draw vertex references an EditableMesh vertex index.
+    // Each draw vertex references an EditableMesh vertex index and triangle index.
     uint32_t drawToEdit[kMaxDrawVertexCount] = {};
+    uint32_t drawToTriangle[kMaxDrawVertexCount] = {};
 
     Vertex drawVertices[kMaxDrawVertexCount] = {};
 
@@ -36,6 +37,7 @@ struct RenderMesh {
 
         for (uint32_t i = 0; i < kMaxDrawVertexCount; ++i) {
             drawToEdit[i] = 0;
+            drawToTriangle[i] = 0;
             drawVertices[i] = Vertex{};
         }
     }
@@ -54,6 +56,7 @@ struct RenderMesh {
                 VertexID vertex = mesh.GetTriangleVertex(face, corner);
 
                 drawToEdit[draw] = vertex;
+                drawToTriangle[draw] = face;
                 drawVertices[draw].position = mesh.GetVertex(vertex);
                 drawVertices[draw].color = color;
             }

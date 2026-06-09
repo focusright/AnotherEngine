@@ -42,6 +42,10 @@ static void EndImGuiFrame() {
     ImGui::Render();
 }
 
+static bool RayIntersectsTriangle(const DirectX::XMFLOAT3& rayOrigin, const DirectX::XMFLOAT3& rayDir, const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b, const DirectX::XMFLOAT3& c, float& outT) {
+    return false;
+}
+
 App::App(EditorCamera& camera) : m_camera(camera) {
     m_ctx.camera = &m_camera;
 
@@ -538,6 +542,10 @@ int App::HitTestVertex(int mouseX, int mouseY) {
     }
 
     return bestVertex;
+}
+
+int App::HitTestTriangle(int mouseX, int mouseY) {
+    return 1;
 }
 
 int App::HitTestObject(int mouseX, int mouseY) const {

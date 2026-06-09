@@ -121,6 +121,7 @@ private:
     Gizmo m_gizmo;
 
     int HitTestVertex(int mouseX, int mouseY);
+    int HitTestTriangle(int mouseX, int mouseY);
     int HitTestObject(int mouseX, int mouseY) const;
     bool ScreenToWorldOnZPlane(int screenX, int screenY, float& worldX, float& worldY);
     DirectX::XMFLOAT3 LocalVertexToWorld(const DirectX::XMFLOAT3& p) const;
